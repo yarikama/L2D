@@ -5,8 +5,10 @@ import numpy as np
 import torch
 
 from l2d.config import configs
-from l2d.training.agent_utils import *
-from l2d.training.mb_agg import *
+from l2d.env.jssp import SJSSP
+from l2d.training.agent_utils import greedy_select_action
+from l2d.training.mb_agg import g_pool_cal
+from l2d.training.ppo import PPO
 
 device = configs.device
 
@@ -25,9 +27,6 @@ N_JOBS_N = params.Nn_j
 N_MACHINES_N = params.Nn_m
 LOW = configs.low
 HIGH = configs.high
-
-from l2d.env.jssp import SJSSP
-from l2d.training.ppo import PPO
 
 env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
 
@@ -86,8 +85,8 @@ for i, data in enumerate(dataset):
     print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.posRewards)
     result.append(-ep_reward + env.posRewards)
 t2 = time.time()
-file_writing_obj = open('./' + 'drltime_' + benchmark + '_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w')
-file_writing_obj.write(str((t2 - t1)/len(dataset)))
+with open('./' + 'drltime_' + benchmark + '_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w') as f:
+    f.write(str((t2 - t1)/len(dataset)))
 
 # print(result)
 # print(np.array(result, dtype=np.single).mean())

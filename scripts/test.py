@@ -5,8 +5,10 @@ import numpy as np
 import torch
 
 from l2d.config import configs
-from l2d.training.agent_utils import *
-from l2d.training.mb_agg import *
+from l2d.env.jssp import SJSSP
+from l2d.training.agent_utils import greedy_select_action
+from l2d.training.mb_agg import g_pool_cal
+from l2d.training.ppo import PPO
 
 device = torch.device(configs.device)
 
@@ -28,9 +30,6 @@ SEED = params.seed
 N_JOBS_N = params.Nn_j
 N_MACHINES_N = params.Nn_m
 
-
-from l2d.env.jssp import SJSSP
-from l2d.training.ppo import PPO
 
 env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
 
@@ -64,7 +63,7 @@ for i in range(dataLoaded.shape[0]):
 # for i in range(1):
     dataset.append((dataLoaded[i][0], dataLoaded[i][1]))
 
-# dataset = [generate_uniform_instance(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
+# dataset = [generate_uniform_sjssp_instance(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
 # print(dataset[0][0])
 
 
@@ -110,8 +109,8 @@ def test(dataset):
     # torch.cuda.synchronize()
     t2 = time.time()
     print(t2 - t1)
-    file_writing_obj = open('./' + 'drltime_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w')
-    file_writing_obj.write(str((t2 - t1)/len(dataset)))
+    with open('./' + 'drltime_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w') as f:
+        f.write(str((t2 - t1)/len(dataset)))
 
     # print(result)
     # print(np.array(result, dtype=np.single).mean())

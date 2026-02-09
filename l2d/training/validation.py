@@ -50,7 +50,7 @@ if __name__ == '__main__':
     import numpy as np
 
     from l2d.config import configs
-    from l2d.env.uni_instance_gen import generate_uniform_instance
+    from l2d.env.uni_instance_gen import generate_uniform_sjssp_instance
 
     parser = argparse.ArgumentParser(description='Arguments for ppo_jssp')
     parser.add_argument('--Pn_j', type=int, default=20, help='Number of jobs of instances to test')
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
         np.random.seed(SEED)
 
-        vali_data = [generate_uniform_instance(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(params.n_vali)]
+        vali_data = [generate_uniform_sjssp_instance(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(params.n_vali)]
 
         makespan = - validate(vali_data, ppo.policy)
         print(makespan.mean())

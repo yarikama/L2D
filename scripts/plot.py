@@ -20,9 +20,10 @@ stride = 50
 datatype = 'vali'  # 'vali', 'log'
 
 
-f = open(f'./{datatype}_{n_j}_{n_m}_{l}_{h}.txt').readline()
+with open(f'./{datatype}_{n_j}_{n_m}_{l}_{h}.txt') as f:
+    line = f.readline()
 if datatype == 'vali':
-    obj = numpy.array([float(s) for s in re.findall(r'-?\d+\.?\d*', f)[1::2]])[:]
+    obj = numpy.array([float(s) for s in re.findall(r'-?\d+\.?\d*', line)[1::2]])[:]
     idx = np.arange(obj.shape[0])
     # plotting...
     plt.xlabel('Iteration', {'size': x_label_scale})
@@ -36,7 +37,7 @@ if datatype == 'vali':
     if show:
         plt.show()
 elif datatype == 'log':
-    obj = numpy.array([float(s) for s in re.findall(r'-?\d+\.?\d*', f)[1::2]])[:].reshape(-1, stride).mean(axis=-1)
+    obj = numpy.array([float(s) for s in re.findall(r'-?\d+\.?\d*', line)[1::2]])[:].reshape(-1, stride).mean(axis=-1)
     idx = np.arange(obj.shape[0])
     # plotting...
     plt.xlabel('Iteration', {'size': x_label_scale})

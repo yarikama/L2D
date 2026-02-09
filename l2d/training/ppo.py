@@ -161,8 +161,8 @@ def main():
     from l2d.env.jssp import SJSSP
     envs = [SJSSP(num_jobs=configs.n_j, num_machines=configs.n_m) for _ in range(configs.num_envs)]
 
-    from l2d.env.uni_instance_gen import generate_uniform_instance
-    data_generator = generate_uniform_instance
+    from l2d.env.uni_instance_gen import generate_uniform_sjssp_instance
+    data_generator = generate_uniform_sjssp_instance
 
     dataLoaded = np.load('./data/generated/generatedData' + str(configs.n_j) + '_' + str(configs.n_m) + '_Seed' + str(configs.np_seed_validation) + '.npy')
     vali_data = []
@@ -196,12 +196,8 @@ def main():
     # training loop
     log = []
     validation_log = []
-    optimal_gaps = []
-    optimal_gap = 1
     record = 100000
     for i_update in range(configs.max_updates):
-
-        t3 = time.time()
 
         ep_rewards = [0 for _ in range(configs.num_envs)]
         adj_envs = []
@@ -262,7 +258,7 @@ def main():
         for j in range(configs.num_envs):
             ep_rewards[j] -= envs[j].posRewards
 
-        loss, v_loss = ppo.update(memories, configs.n_j*configs.n_m, configs.graph_pool_type)
+        _loss, v_loss = ppo.update(memories, configs.n_j*configs.n_m, configs.graph_pool_type)
         for memory in memories:
             memory.clear_memory()
         mean_rewards_all_env = sum(ep_rewards) / len(ep_rewards)
@@ -275,7 +271,6 @@ def main():
         print(f'Episode {i_update + 1}\t Last reward: {mean_rewards_all_env:.2f}\t Mean_Vloss: {v_loss:.8f}')
 
         # validate and save use mean performance
-        t4 = time.time()
         if (i_update + 1) % 100 == 0:
             vali_result = - validate(vali_data, ppo.policy).mean()
             validation_log.append(vali_result)
@@ -286,10 +281,6 @@ def main():
             print('The validation quality is:', vali_result)
             with open('./' + 'vali_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w') as f:
                 f.write(str(validation_log))
-        t5 = time.time()
-
-        # print('Training:', t4 - t3)
-        # print('Validation:', t5 - t4)
 
 
 if __name__ == '__main__':

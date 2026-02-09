@@ -83,7 +83,7 @@ if __name__ == "__main__":
     import time
 
     from l2d.env.jssp import SJSSP
-    from l2d.env.uni_instance_gen import generate_uniform_instance
+    from l2d.env.uni_instance_gen import generate_uniform_sjssp_instance
 
     n_j = 3
     n_m = 3
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     # rollout env random action
     t1 = time.time()
-    data = generate_uniform_instance(n_j=n_j, n_m=n_m, low=low, high=high)
+    data = generate_uniform_sjssp_instance(n_j=n_j, n_m=n_m, low=low, high=high)
     print('Dur')
     print(data[0])
     print('Mach')

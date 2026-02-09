@@ -12,7 +12,7 @@ l2d/                          # main package
 │   ├── get_machine_neighbors.py         # getActionNbghs() 機台前驅/後繼工序
 │   ├── end_time_lb.py        # calEndTimeLB() 完工時間下界
 │   ├── left_shift.py         # permissibleLeftShift() 可行左移排程
-│   └── instance_gen.py       # generate_uniform_instance() 隨機 JSSP instance
+│   └── instance_gen.py       # generate_uniform_sjssp_instance() 隨機 JSSP instance
 ├── models/
 │   ├── actor_critic.py       # ActorCritic：GraphCNN + Actor + Critic + action masking
 │   ├── graphcnn.py           # GraphCNN 圖卷積 message passing
