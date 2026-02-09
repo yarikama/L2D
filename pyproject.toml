@@ -1,0 +1,12 @@
+[project]
+name = "l2d"
+version = "0.1.0"
+description = "Learning to Dispatch for Job Shop Scheduling via Deep Reinforcement Learning"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "gym==0.17.3",
+    "matplotlib",
+    "numpy",
+    "torch",
+]
