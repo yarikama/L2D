@@ -28,7 +28,7 @@ N_MACHINES_N = params.Nn_m
 LOW = configs.low
 HIGH = configs.high
 
-env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
+env = SJSSP(num_jobs=N_JOBS_P, num_machines=N_MACHINES_P)
 
 ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
           n_j=N_JOBS_P,
@@ -45,8 +45,8 @@ ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
 path = './data/checkpoints/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N) + '_' + str(LOW) + '_' + str(HIGH))
 ppo.policy.load_state_dict(torch.load(path))
 g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
-                         batch_size=torch.Size([1, env.number_of_tasks, env.number_of_tasks]),
-                         n_nodes=env.number_of_tasks,
+                         batch_size=torch.Size([1, env.num_operations, env.num_operations]),
+                         n_nodes=env.num_operations,
                          device=device)
 
 dataLoaded = np.load('./data/benchmarks/' + benchmark + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.npy')
@@ -82,8 +82,8 @@ for i, data in enumerate(dataset):
         if done:
             break
     # print(max(env.end_time))
-    print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.posRewards)
-    result.append(-ep_reward + env.posRewards)
+    print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.pos_rewards)
+    result.append(-ep_reward + env.pos_rewards)
 t2 = time.time()
 with open('./' + 'drltime_' + benchmark + '_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w') as f:
     f.write(str((t2 - t1)/len(dataset)))

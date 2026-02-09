@@ -161,8 +161,8 @@ def main():
     from l2d.env.jssp import SJSSP
     envs = [SJSSP(num_jobs=configs.n_j, num_machines=configs.n_m) for _ in range(configs.num_envs)]
 
-    from l2d.env.uni_instance_gen import generate_uniform_sjssp_instance
-    data_generator = generate_uniform_sjssp_instance
+    from l2d.env.uni_instance_gen import generate_uniform_times_and_machines_assignment
+    data_generator = generate_uniform_times_and_machines_assignment
 
     dataLoaded = np.load('./data/generated/generatedData' + str(configs.n_j) + '_' + str(configs.n_m) + '_Seed' + str(configs.np_seed_validation) + '.npy')
     vali_data = []
@@ -206,12 +206,17 @@ def main():
         mask_envs = []
 
         for i, env in enumerate(envs):
-            adj, fea, candidate, mask = env.reset(data_generator(n_j=configs.n_j, n_m=configs.n_m, low=configs.low, high=configs.high))
+            adj, fea, candidate, mask = env.reset(data_generator(
+                num_jobs=configs.n_j,
+                num_machines=configs.n_m,
+                low_bound_processing_time=configs.low,
+                high_bound_processing_time=configs.high,
+            ))
             adj_envs.append(adj)
             fea_envs.append(fea)
             candidate_envs.append(candidate)
             mask_envs.append(mask)
-            ep_rewards[i] = - env.initQuality
+            ep_rewards[i] = - env.init_quality
         # rollout the env
         while True:
             fea_tensor_envs = [torch.from_numpy(np.copy(fea)).to(device) for fea in fea_envs]
@@ -256,7 +261,7 @@ def main():
             if envs[0].is_done():
                 break
         for j in range(configs.num_envs):
-            ep_rewards[j] -= envs[j].posRewards
+            ep_rewards[j] -= envs[j].pos_rewards
 
         _loss, v_loss = ppo.update(memories, configs.n_j*configs.n_m, configs.graph_pool_type)
         for memory in memories:

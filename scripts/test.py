@@ -31,7 +31,7 @@ N_JOBS_N = params.Nn_j
 N_MACHINES_N = params.Nn_m
 
 
-env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
+env = SJSSP(num_jobs=N_JOBS_P, num_machines=N_MACHINES_P)
 
 ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
           n_j=N_JOBS_P,
@@ -50,8 +50,8 @@ path = './data/checkpoints/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N
 ppo.policy.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
 # ppo.policy.eval()
 g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
-                         batch_size=torch.Size([1, env.number_of_tasks, env.number_of_tasks]),
-                         n_nodes=env.number_of_tasks,
+                         batch_size=torch.Size([1, env.num_operations, env.num_operations]),
+                         n_nodes=env.num_operations,
                          device=device)
 # 34 41 41 57 40 56 63 35 67 66 45 67 51 68 68 41 67 30 65 64
 np.random.seed(SEED)
@@ -63,7 +63,7 @@ for i in range(dataLoaded.shape[0]):
 # for i in range(1):
     dataset.append((dataLoaded[i][0], dataLoaded[i][1]))
 
-# dataset = [generate_uniform_sjssp_instance(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
+# dataset = [generate_uniform_times_and_machines_assignment(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
 # print(dataset[0][0])
 
 
@@ -103,8 +103,8 @@ def test(dataset):
         # t6 = time.time()
         # print(t6 - t5)
         # print(max(env.end_time))
-        print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.posRewards)
-        result.append(-ep_reward + env.posRewards)
+        print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.pos_rewards)
+        result.append(-ep_reward + env.pos_rewards)
         # print(sum(delta_t))
     # torch.cuda.synchronize()
     t2 = time.time()
