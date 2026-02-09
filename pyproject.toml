@@ -10,3 +10,10 @@ dependencies = [
     "numpy",
     "torch",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+l2d-train = "l2d.training.ppo:main"

@@ -1,4 +1,4 @@
-from Params import configs
+from l2d.config import configs
 import numpy as np
 
 

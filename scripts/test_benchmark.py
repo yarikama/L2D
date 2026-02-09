@@ -1,9 +1,9 @@
-from mb_agg import *
-from agent_utils import *
+from l2d.training.mb_agg import *
+from l2d.training.agent_utils import *
 import torch
 import numpy as np
 import argparse
-from Params import configs
+from l2d.config import configs
 import time
 
 device = configs.device
@@ -24,8 +24,8 @@ N_MACHINES_N = params.Nn_m
 LOW = configs.low
 HIGH = configs.high
 
-from JSSP_Env import SJSSP
-from PPO_jssp_multiInstances import PPO
+from l2d.env.jssp import SJSSP
+from l2d.training.ppo import PPO
 env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
 
 ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
@@ -40,14 +40,14 @@ ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
           hidden_dim_actor=configs.hidden_dim_actor,
           num_mlp_layers_critic=configs.num_mlp_layers_critic,
           hidden_dim_critic=configs.hidden_dim_critic)
-path = './SavedNetwork/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N) + '_' + str(LOW) + '_' + str(HIGH))
+path = './data/checkpoints/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N) + '_' + str(LOW) + '_' + str(HIGH))
 ppo.policy.load_state_dict(torch.load(path))
 g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
                          batch_size=torch.Size([1, env.number_of_tasks, env.number_of_tasks]),
                          n_nodes=env.number_of_tasks,
                          device=device)
 
-dataLoaded = np.load('./BenchDataNmpy/' + benchmark + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.npy')
+dataLoaded = np.load('./data/benchmarks/' + benchmark + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.npy')
 dataset = []
 for i in range(dataLoaded.shape[0]):
     dataset.append((dataLoaded[i][0], dataLoaded[i][1]))

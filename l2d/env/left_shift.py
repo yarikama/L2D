@@ -1,4 +1,4 @@
-from Params import configs
+from l2d.config import configs
 import numpy as np
 
 
@@ -79,8 +79,8 @@ def calJobAndMchRdyTimeOfa(a, mchMat, durMat, mchsStartTimes, opIDsOnMchs):
 
 
 if __name__ == "__main__":
-    from JSSP_Env import SJSSP
-    from uniform_instance_gen import uni_instance_gen
+    from l2d.env.jssp import SJSSP
+    from l2d.env.instance_gen import uni_instance_gen
     import time
 
     n_j = 3

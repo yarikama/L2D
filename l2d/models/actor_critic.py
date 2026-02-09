@@ -1,8 +1,8 @@
 import torch.nn as nn
-from models.mlp import MLPActor
-from models.mlp import MLPCritic
+from l2d.models.mlp import MLPActor
+from l2d.models.mlp import MLPCritic
 import torch.nn.functional as F
-from models.graphcnn_congForSJSSP import GraphCNN
+from l2d.models.graphcnn import GraphCNN
 import torch
 
 

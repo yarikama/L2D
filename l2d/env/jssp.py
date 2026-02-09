@@ -1,11 +1,11 @@
 import gym
 import numpy as np
 from gym.utils import EzPickle
-from uniform_instance_gen import override
-from updateEntTimeLB import calEndTimeLB
-from Params import configs
-from permissibleLS import permissibleLeftShift
-from updateAdjMat import getActionNbghs
+from l2d.env.instance_gen import override
+from l2d.env.end_time_lb import calEndTimeLB
+from l2d.config import configs
+from l2d.env.left_shift import permissibleLeftShift
+from l2d.env.adj_matrix import getActionNbghs
 
 
 class SJSSP(gym.Env, EzPickle):

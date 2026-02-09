@@ -1,7 +1,7 @@
 import numpy as np
-from JSSP_Env import SJSSP
-from uniform_instance_gen import uni_instance_gen
-from Params import configs
+from l2d.env.jssp import SJSSP
+from l2d.env.instance_gen import uni_instance_gen
+from l2d.config import configs
 import time
 
 n_j = 200

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.mlp import MLP
+from l2d.models.mlp import MLP
 # import sys
 # sys.path.append("models/")
 
