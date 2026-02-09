@@ -1,33 +1,59 @@
+"""End-time lower bound calculation for JSSP operations.
+
+For each operation, compute a lower bound on its completion time by summing
+the remaining (unscheduled) durations along the job's processing chain.
+
+WARNING: `calc_end_time_lower_bound` mutates `remaining_durations` in place
+for performance. The caller (SJSSP.step) passes a dedicated copy (`dur_cp`).
+"""
+
 import numpy as np
 
 
-def lastNonZero(arr, axis, invalid_val=-1):
+def _last_nonzero_indices(arr: np.ndarray, axis: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Find the (row, col) indices of the last nonzero element along `axis` for each row.
+
+    Rows that are entirely zero are excluded from the result.
+    """
     mask = arr != 0
-    val = arr.shape[axis] - np.flip(mask, axis=axis).argmax(axis=axis) - 1
-    yAxis = np.where(mask.any(axis=axis), val, invalid_val)
-    xAxis = np.arange(arr.shape[0], dtype=np.int64)
-    xRet = xAxis[yAxis >= 0]
-    yRet = yAxis[yAxis >= 0]
-    return xRet, yRet
+    last_pos = arr.shape[axis] - np.flip(mask, axis=axis).argmax(axis=axis) - 1
+    has_nonzero = mask.any(axis=axis)
+    rows = np.arange(arr.shape[0])[has_nonzero]
+    cols = last_pos[has_nonzero]
+    return rows, cols
 
 
-def calEndTimeLB(temp1, dur_cp):
-    x, y = lastNonZero(temp1, 1, invalid_val=-1)
-    dur_cp[np.where(temp1 != 0)] = 0
-    dur_cp[x, y] = temp1[x, y]
-    temp2 = np.cumsum(dur_cp, axis=1)
-    temp2[np.where(temp1 != 0)] = 0
-    ret = temp1+temp2
-    return ret
+def calc_end_time_lower_bound(
+    end_times: np.ndarray, remaining_durations: np.ndarray
+) -> np.ndarray:
+    """
+    Compute end-time lower bounds for all operations.
 
+    For scheduled operations (nonzero in end_times), the LB is their actual end time
+    plus the cumulative duration of subsequent unscheduled operations in the same job.
 
-if __name__ == '__main__':
-    dur = np.array([[1, 2], [3, 4]])
-    temp1 = np.zeros_like(dur)
+    NOTE: This function mutates `remaining_durations` in place.
 
-    temp1[0, 0] = 1
-    temp1[1, 0] = 3
-    temp1[1, 1] = 5
-    print(temp1)
+    Args:
+        end_times: (n_j, n_m) array where nonzero values are actual end times
+            of already-scheduled operations.
+        remaining_durations: (n_j, n_m) array of original durations, will be
+            zeroed out at scheduled positions.
 
-    ret = calEndTimeLB(temp1, dur)
+    Returns:
+        (n_j, n_m) array of end-time lower bounds.
+    """
+    rows, cols = _last_nonzero_indices(end_times, axis=1)
+
+    # Zero out durations of already-scheduled operations
+    remaining_durations[end_times != 0] = 0
+    # Restore the last scheduled operation's actual end time as the chain start
+    remaining_durations[rows, cols] = end_times[rows, cols]
+
+    # Cumulative sum gives the lower bound chain
+    cumulative = np.cumsum(remaining_durations, axis=1)
+    # Only keep LBs for unscheduled positions
+    cumulative[end_times != 0] = 0
+
+    return end_times + cumulative

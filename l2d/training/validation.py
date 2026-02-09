@@ -45,7 +45,7 @@ def validate(vali_set, model):
 
 if __name__ == '__main__':
 
-    from l2d.env.instance_gen import uni_instance_gen
+    from l2d.env.uni_instance_gen import generate_uniform_instance
     import numpy as np
     import time
     import argparse
@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
         np.random.seed(SEED)
 
-        vali_data = [uni_instance_gen(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(params.n_vali)]
+        vali_data = [generate_uniform_instance(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(params.n_vali)]
 
         makespan = - validate(vali_data, ppo.policy)
         print(makespan.mean())

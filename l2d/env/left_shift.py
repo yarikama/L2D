@@ -80,7 +80,7 @@ def calJobAndMchRdyTimeOfa(a, mchMat, durMat, mchsStartTimes, opIDsOnMchs):
 
 if __name__ == "__main__":
     from l2d.env.jssp import SJSSP
-    from l2d.env.instance_gen import uni_instance_gen
+    from l2d.env.uni_instance_gen import generate_uniform_instance
     import time
 
     n_j = 3
@@ -97,7 +97,7 @@ if __name__ == "__main__":
 
     # rollout env random action
     t1 = time.time()
-    data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+    data = generate_uniform_instance(n_j=n_j, n_m=n_m, low=low, high=high)
     print('Dur')
     print(data[0])
     print('Mach')

@@ -9,10 +9,10 @@ l2d/                          # main package
 ├── config.py                 # argparse 超參數（device, env, network, PPO）
 ├── env/
 │   ├── jssp.py               # 核心 Gym 環境 SJSSP（step/reset）
-│   ├── adj_matrix.py         # getActionNbghs() 機台前驅/後繼工序
+│   ├── get_machine_neighbors.py         # getActionNbghs() 機台前驅/後繼工序
 │   ├── end_time_lb.py        # calEndTimeLB() 完工時間下界
 │   ├── left_shift.py         # permissibleLeftShift() 可行左移排程
-│   └── instance_gen.py       # uni_instance_gen() 隨機 JSSP instance
+│   └── instance_gen.py       # generate_uniform_instance() 隨機 JSSP instance
 ├── models/
 │   ├── actor_critic.py       # ActorCritic：GraphCNN + Actor + Critic + action masking
 │   ├── graphcnn.py           # GraphCNN 圖卷積 message passing

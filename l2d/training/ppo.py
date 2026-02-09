@@ -160,8 +160,8 @@ def main():
     from l2d.env.jssp import SJSSP
     envs = [SJSSP(n_j=configs.n_j, n_m=configs.n_m) for _ in range(configs.num_envs)]
 
-    from l2d.env.instance_gen import uni_instance_gen
-    data_generator = uni_instance_gen
+    from l2d.env.uni_instance_gen import generate_uniform_instance
+    data_generator = generate_uniform_instance
 
     dataLoaded = np.load('./data/generated/generatedData' + str(configs.n_j) + '_' + str(configs.n_m) + '_Seed' + str(configs.np_seed_validation) + '.npy')
     vali_data = []

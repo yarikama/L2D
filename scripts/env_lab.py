@@ -1,6 +1,6 @@
 import numpy as np
 from l2d.env.jssp import SJSSP
-from l2d.env.instance_gen import uni_instance_gen
+from l2d.env.uni_instance_gen import generate_uniform_instance
 from l2d.config import configs
 import time
 
@@ -15,7 +15,7 @@ env = SJSSP(n_j=n_j, n_m=n_m)
 
 # rollout env random action
 t1 = time.time()
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_instance(n_j=n_j, n_m=n_m, low=low, high=high)
 dur = np.array([[83, 65,  3],
                [69, 42, 64],
                [27, 27, 18]])
@@ -61,7 +61,7 @@ print(t2 - t1)
 
 '''# rtools solution
 from ortools_baseline import MinimalJobshopSat
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_instance(n_j=n_j, n_m=n_m, low=low, high=high)
 # print(data)
 times_rearrange = np.expand_dims(data[0], axis=-1)
 machines_rearrange = np.expand_dims(data[1], axis=-1)
@@ -72,7 +72,7 @@ print(result)'''
 '''# run solution to test env
 from ortools_baseline import MinimalJobshopSat
 np.random.seed(SEED)
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_instance(n_j=n_j, n_m=n_m, low=low, high=high)
 times_rearrange = np.expand_dims(data[0], axis=-1)
 machines_rearrange = np.expand_dims(data[1], axis=-1)
 data2ortools = np.concatenate((machines_rearrange, times_rearrange), axis=-1)
@@ -139,7 +139,7 @@ g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
                          n_nodes=n_j * n_m,
                          device=device)
 
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_instance(n_j=n_j, n_m=n_m, low=low, high=high)
 adj, fea, omega, mask = env.reset(data)
 rewards = [- env.initQuality]
 while True:
@@ -168,5 +168,5 @@ print(env.opIDsOnMchs)'''
 
 '''# Test random instances
 for _ in range(3):
-    times, machines = uni_instance_gen(n_j=configs.n_j, n_m=configs.n_m, low=configs.low, high=configs.high)
+    times, machines = generate_uniform_instance(n_j=configs.n_j, n_m=configs.n_m, low=configs.low, high=configs.high)
     print(times)'''

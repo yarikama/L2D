@@ -53,7 +53,7 @@ g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
                          n_nodes=env.number_of_tasks,
                          device=device)
 # 34 41 41 57 40 56 63 35 67 66 45 67 51 68 68 41 67 30 65 64
-from l2d.env.instance_gen import uni_instance_gen
+from l2d.env.uni_instance_gen import generate_uniform_instance
 np.random.seed(SEED)
 
 dataLoaded = np.load('./data/generated/generatedData' + str(N_JOBS_P) + '_' + str(N_MACHINES_P) + '_Seed' + str(SEED) + '.npy')
@@ -63,7 +63,7 @@ for i in range(dataLoaded.shape[0]):
 # for i in range(1):
     dataset.append((dataLoaded[i][0], dataLoaded[i][1]))
 
-# dataset = [uni_instance_gen(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
+# dataset = [generate_uniform_instance(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
 # print(dataset[0][0])
 
 
