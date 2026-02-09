@@ -4,7 +4,7 @@ import numpy as np
 
 
 def get_machine_neighbors(
-    action: int, 
+    action: int,
     op_ids_on_machines: np.ndarray
 ) -> tuple[int, int]:
     """
@@ -28,7 +28,7 @@ def get_machine_neighbors(
     r, c = row.item(), col.item()
 
     # Predecessor: previous slot on same machine (or self if first)
-    if c > 0:
+    if c > 0:  # noqa: SIM108
         predecessor = op_ids_on_machines[r, c - 1].item()
     else:
         predecessor = action

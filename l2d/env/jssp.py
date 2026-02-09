@@ -24,17 +24,17 @@ import numpy as np
 
 from l2d.config import configs
 from l2d.env.end_time_lb import calc_end_time_lower_bound
-from l2d.env.left_shift import permissibleLeftShift
 from l2d.env.get_machine_neighbors import get_machine_neighbors
+from l2d.env.left_shift import permissibleLeftShift
 from l2d.types import (
-    StepResult,
-    ResetResult,
     AdjMatrix,
     Features,
-    Omega,
-    Mask,
-    ProcessingTimes,
     MachineAssignments,
+    Mask,
+    Omega,
+    ProcessingTimes,
+    ResetResult,
+    StepResult,
 )
 
 
@@ -69,12 +69,7 @@ class SJSSP(gym.Env):
             action: The operation ID to schedule.
 
         Returns:
-            adj: The adjacency matrix of the constraint graph.
-            features: The features of the operations.
-            reward: The reward for the action.
-            done: Whether the environment is done.
-            omega: The next schedulable operation ID per job.
-            mask: True if job is fully scheduled.
+            StepResult: The result of the step.
         """
         # Redundant action (already scheduled) has no effect
         if action not in self.schedule:

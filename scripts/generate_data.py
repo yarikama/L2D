@@ -1,4 +1,5 @@
 import numpy as np
+
 from l2d.env.uni_instance_gen import generate_uniform_instance
 
 j = 20
@@ -12,4 +13,4 @@ np.random.seed(seed)
 
 data = np.array([generate_uniform_instance(n_j=j, n_m=m, low=l, high=h) for _ in range(batch_size)])
 print(data.shape)
-np.save('data/generated/generatedData{}_{}_Seed{}.npy'.format(j, m, seed), data)
+np.save(f'data/generated/generatedData{j}_{m}_Seed{seed}.npy', data)

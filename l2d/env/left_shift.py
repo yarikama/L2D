@@ -1,5 +1,6 @@
-from l2d.config import configs
 import numpy as np
+
+from l2d.config import configs
 
 
 def permissibleLeftShift(a, durMat, mchMat, mchsStartTimes, opIDsOnMchs):
@@ -79,9 +80,10 @@ def calJobAndMchRdyTimeOfa(a, mchMat, durMat, mchsStartTimes, opIDsOnMchs):
 
 
 if __name__ == "__main__":
+    import time
+
     from l2d.env.jssp import SJSSP
     from l2d.env.uni_instance_gen import generate_uniform_instance
-    import time
 
     n_j = 3
     n_m = 3

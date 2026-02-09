@@ -1,10 +1,12 @@
-from l2d.training.mb_agg import *
-from l2d.training.agent_utils import *
-import torch
-import numpy as np
 import argparse
-from l2d.config import configs
 import time
+
+import numpy as np
+import torch
+
+from l2d.config import configs
+from l2d.training.agent_utils import *
+from l2d.training.mb_agg import *
 
 device = configs.device
 
@@ -26,6 +28,7 @@ HIGH = configs.high
 
 from l2d.env.jssp import SJSSP
 from l2d.training.ppo import PPO
+
 env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
 
 ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,

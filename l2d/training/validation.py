@@ -2,13 +2,13 @@ def validate(vali_set, model):
     N_JOBS = vali_set[0][0].shape[0]
     N_MACHINES = vali_set[0][0].shape[1]
 
-    from l2d.env.jssp import SJSSP
-    from l2d.training.mb_agg import g_pool_cal
-    from l2d.training.agent_utils import sample_select_action
-    from l2d.training.agent_utils import greedy_select_action
     import numpy as np
     import torch
+
     from l2d.config import configs
+    from l2d.env.jssp import SJSSP
+    from l2d.training.agent_utils import greedy_select_action
+    from l2d.training.mb_agg import g_pool_cal
     env = SJSSP(n_j=N_JOBS, n_m=N_MACHINES)
     device = torch.device(configs.device)
     g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
@@ -45,11 +45,12 @@ def validate(vali_set, model):
 
 if __name__ == '__main__':
 
-    from l2d.env.uni_instance_gen import generate_uniform_instance
-    import numpy as np
-    import time
     import argparse
+
+    import numpy as np
+
     from l2d.config import configs
+    from l2d.env.uni_instance_gen import generate_uniform_instance
 
     parser = argparse.ArgumentParser(description='Arguments for ppo_jssp')
     parser.add_argument('--Pn_j', type=int, default=20, help='Number of jobs of instances to test')
@@ -69,8 +70,9 @@ if __name__ == '__main__':
     N_JOBS_N = params.Nn_j
     N_MACHINES_N = params.Nn_m
 
-    from l2d.training.ppo import PPO
     import torch
+
+    from l2d.training.ppo import PPO
 
     ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
               n_j=N_JOBS_P,

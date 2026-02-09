@@ -1,7 +1,8 @@
+import re
+
+import matplotlib.pyplot as plt
 import numpy
 import numpy as np
-import matplotlib.pyplot as plt
-import re
 
 # plot parameters
 x_label_scale = 15
@@ -19,7 +20,7 @@ stride = 50
 datatype = 'vali'  # 'vali', 'log'
 
 
-f = open('./{}_{}_{}_{}_{}.txt'.format(datatype, n_j, n_m, l, h), 'r').readline()
+f = open(f'./{datatype}_{n_j}_{n_m}_{l}_{h}.txt').readline()
 if datatype == 'vali':
     obj = numpy.array([float(s) for s in re.findall(r'-?\d+\.?\d*', f)[1::2]])[:]
     idx = np.arange(obj.shape[0])
@@ -27,7 +28,7 @@ if datatype == 'vali':
     plt.xlabel('Iteration', {'size': x_label_scale})
     plt.ylabel('MakeSpan', {'size': y_label_scale})
     plt.grid()
-    plt.plot(idx, obj, color='tab:blue', label='{}x{}'.format(n_j, n_m))
+    plt.plot(idx, obj, color='tab:blue', label=f'{n_j}x{n_m}')
     plt.tight_layout()
     plt.legend(fontsize=anchor_text_size)
     if save:
@@ -41,7 +42,7 @@ elif datatype == 'log':
     plt.xlabel('Iteration', {'size': x_label_scale})
     plt.ylabel('MakeSpan', {'size': y_label_scale})
     plt.grid()
-    plt.plot(idx, obj, color='tab:blue', label='{}x{}'.format(n_j, n_m))
+    plt.plot(idx, obj, color='tab:blue', label=f'{n_j}x{n_m}')
     plt.tight_layout()
     plt.legend(fontsize=anchor_text_size)
     if save:

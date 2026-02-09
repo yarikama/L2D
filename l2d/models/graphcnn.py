@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from l2d.models.mlp import MLP
+
 # import sys
 # sys.path.append("models/")
 
@@ -40,7 +42,7 @@ class GraphCNN(nn.Module):
         device: which device to use
         '''
 
-        super(GraphCNN, self).__init__()
+        super().__init__()
 
         # self.final_dropout = final_dropout
         self.device = device
@@ -132,11 +134,11 @@ class GraphCNN(nn.Module):
         for layer in range(self.num_layers-1):
             if self.neighbor_pooling_type == "max" and self.learn_eps:
                 h = self.next_layer_eps(h, layer, padded_neighbor_list=padded_neighbor_list)
-            elif not self.neighbor_pooling_type == "max" and self.learn_eps:
+            elif self.neighbor_pooling_type != "max" and self.learn_eps:
                 h = self.next_layer_eps(h, layer, Adj_block=Adj_block)
             elif self.neighbor_pooling_type == "max" and not self.learn_eps:
                 h = self.next_layer(h, layer, padded_neighbor_list=padded_neighbor_list)
-            elif not self.neighbor_pooling_type == "max" and not self.learn_eps:
+            elif self.neighbor_pooling_type != "max" and not self.learn_eps:
                 h = self.next_layer(h, layer, Adj_block=Adj_block)
 
         h_nodes = h.clone()

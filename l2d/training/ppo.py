@@ -1,13 +1,14 @@
-from l2d.training.mb_agg import *
-from l2d.training.agent_utils import eval_actions
-from l2d.training.agent_utils import select_action
-from l2d.models.actor_critic import ActorCritic
-from copy import deepcopy
-import torch
 import time
-import torch.nn as nn
+from copy import deepcopy
+
 import numpy as np
+import torch
+import torch.nn as nn
+
 from l2d.config import configs
+from l2d.models.actor_critic import ActorCritic
+from l2d.training.agent_utils import eval_actions, select_action
+from l2d.training.mb_agg import aggr_obs, g_pool_cal
 from l2d.training.validation import validate
 
 device = torch.device(configs.device)
@@ -101,7 +102,7 @@ class PPO:
         for i in range(len(memories)):
             rewards = []
             discounted_reward = 0
-            for reward, is_terminal in zip(reversed(memories[i].r_mb), reversed(memories[i].done_mb)):
+            for reward, is_terminal in zip(reversed(memories[i].r_mb), reversed(memories[i].done_mb), strict=False):
                 if is_terminal:
                     discounted_reward = 0
                 discounted_reward = reward + (self.gamma * discounted_reward)
@@ -158,7 +159,7 @@ class PPO:
 def main():
 
     from l2d.env.jssp import SJSSP
-    envs = [SJSSP(n_j=configs.n_j, n_m=configs.n_m) for _ in range(configs.num_envs)]
+    envs = [SJSSP(num_jobs=configs.n_j, num_machines=configs.n_m) for _ in range(configs.num_envs)]
 
     from l2d.env.uni_instance_gen import generate_uniform_instance
     data_generator = generate_uniform_instance
@@ -207,7 +208,7 @@ def main():
         fea_envs = []
         candidate_envs = []
         mask_envs = []
-        
+
         for i, env in enumerate(envs):
             adj, fea, candidate, mask = env.reset(data_generator(n_j=configs.n_j, n_m=configs.n_m, low=configs.low, high=configs.high))
             adj_envs.append(adj)
@@ -221,7 +222,7 @@ def main():
             adj_tensor_envs = [torch.from_numpy(np.copy(adj)).to(device).to_sparse() for adj in adj_envs]
             candidate_tensor_envs = [torch.from_numpy(np.copy(candidate)).to(device) for candidate in candidate_envs]
             mask_tensor_envs = [torch.from_numpy(np.copy(mask)).to(device) for mask in mask_envs]
-            
+
             with torch.no_grad():
                 action_envs = []
                 a_idx_envs = []
@@ -235,7 +236,7 @@ def main():
                     action, a_idx = select_action(pi, candidate_envs[i], memories[i])
                     action_envs.append(action)
                     a_idx_envs.append(a_idx)
-            
+
             adj_envs = []
             fea_envs = []
             candidate_envs = []
@@ -267,13 +268,12 @@ def main():
         mean_rewards_all_env = sum(ep_rewards) / len(ep_rewards)
         log.append([i_update, mean_rewards_all_env])
         if (i_update + 1) % 100 == 0:
-            file_writing_obj = open('./' + 'log_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w')
-            file_writing_obj.write(str(log))
+            with open('./' + 'log_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w') as f:
+                f.write(str(log))
 
         # log results
-        print('Episode {}\t Last reward: {:.2f}\t Mean_Vloss: {:.8f}'.format(
-            i_update + 1, mean_rewards_all_env, v_loss))
-        
+        print(f'Episode {i_update + 1}\t Last reward: {mean_rewards_all_env:.2f}\t Mean_Vloss: {v_loss:.8f}')
+
         # validate and save use mean performance
         t4 = time.time()
         if (i_update + 1) % 100 == 0:
@@ -284,9 +284,8 @@ def main():
                     str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high)))
                 record = vali_result
             print('The validation quality is:', vali_result)
-            file_writing_obj1 = open(
-                './' + 'vali_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w')
-            file_writing_obj1.write(str(validation_log))
+            with open('./' + 'vali_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w') as f:
+                f.write(str(validation_log))
         t5 = time.time()
 
         # print('Training:', t4 - t3)

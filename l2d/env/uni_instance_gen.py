@@ -44,9 +44,9 @@ def generate_uniform_instance(
         machines: (n_j, n_m) array of machine assignments (1-indexed).
     """
     times = np.random.randint(low=low, high=high, size=(n_j, n_m))
-    
+
     # Each job visits machines [1, 2, ..., n_m] in a shuffled order
     machines = np.tile(np.arange(1, n_m + 1), (n_j, 1))
     machines = _shuffle_rows(machines)
-    
+
     return times, machines

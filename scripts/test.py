@@ -1,11 +1,12 @@
-from l2d.training.mb_agg import *
-from l2d.training.agent_utils import *
-import torch
 import argparse
-from l2d.config import configs
 import time
-import numpy as np
 
+import numpy as np
+import torch
+
+from l2d.config import configs
+from l2d.training.agent_utils import *
+from l2d.training.mb_agg import *
 
 device = torch.device(configs.device)
 
@@ -30,6 +31,7 @@ N_MACHINES_N = params.Nn_m
 
 from l2d.env.jssp import SJSSP
 from l2d.training.ppo import PPO
+
 env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
 
 ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
@@ -53,7 +55,6 @@ g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
                          n_nodes=env.number_of_tasks,
                          device=device)
 # 34 41 41 57 40 56 63 35 67 66 45 67 51 68 68 41 67 30 65 64
-from l2d.env.uni_instance_gen import generate_uniform_instance
 np.random.seed(SEED)
 
 dataLoaded = np.load('./data/generated/generatedData' + str(N_JOBS_P) + '_' + str(N_MACHINES_P) + '_Seed' + str(SEED) + '.npy')

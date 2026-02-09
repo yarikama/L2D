@@ -1,8 +1,9 @@
+import time
+
 import numpy as np
+
 from l2d.env.jssp import SJSSP
 from l2d.env.uni_instance_gen import generate_uniform_instance
-from l2d.config import configs
-import time
 
 n_j = 200
 n_m = 50

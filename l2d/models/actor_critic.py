@@ -1,9 +1,9 @@
-import torch.nn as nn
-from l2d.models.mlp import MLPActor
-from l2d.models.mlp import MLPCritic
-import torch.nn.functional as F
-from l2d.models.graphcnn import GraphCNN
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from l2d.models.graphcnn import GraphCNN
+from l2d.models.mlp import MLPActor, MLPCritic
 
 
 class ActorCritic(nn.Module):
@@ -27,7 +27,7 @@ class ActorCritic(nn.Module):
                  # actor/critic/feature_extraction shared attribute
                  device
                  ):
-        super(ActorCritic, self).__init__()
+        super().__init__()
         # job size for problems, no business with network
         self.n_j = n_j
         # machine size for problems, no business with network

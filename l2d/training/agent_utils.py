@@ -4,7 +4,8 @@ from torch.distributions.categorical import Categorical
 def select_action(p, cadidate, memory):
     dist = Categorical(p.squeeze())
     s = dist.sample()
-    if memory is not None: memory.logprobs.append(dist.log_prob(s))
+    if memory is not None:
+        memory.logprobs.append(dist.log_prob(s))
     return cadidate[s], s
 
 
