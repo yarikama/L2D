@@ -2,13 +2,17 @@
 Gym environment for the Sequential Job Shop Scheduling Problem (SJSSP).
 
 State representation:
-- adj: (n_ops, n_ops) adjacency matrix of the constraint graph
+
+- adj: (num_operations, num_operations) adjacency matrix of the constraint graph
     - self-loops + conjunctive arcs (job order) + disjunctive arcs (machine order)
-- features: (n_ops, 2) per-operation features
+
+- features: (num_operations, 2) per-operation features
     - [:, 0] = normalized end-time lower bound
     - [:, 1] = finished mark (1 if scheduled, 0 otherwise)
-- omega: (n_j,) next schedulable operation ID per job
-- mask: (n_j,) True if job is fully scheduled
+
+- omega: (num_jobs,) next schedulable operation ID per job
+
+- mask: (num_jobs,) True if job is fully scheduled
 
 Action: an operation ID (int) from omega where mask is False.
 
@@ -22,6 +26,16 @@ from l2d.config import configs
 from l2d.env.end_time_lb import calc_end_time_lower_bound
 from l2d.env.left_shift import permissibleLeftShift
 from l2d.env.get_machine_neighbors import get_machine_neighbors
+from l2d.types import (
+    StepResult,
+    ResetResult,
+    AdjMatrix,
+    Features,
+    Omega,
+    Mask,
+    ProcessingTimes,
+    MachineAssignments,
+)
 
 
 class SJSSP(gym.Env):
@@ -32,22 +46,36 @@ class SJSSP(gym.Env):
         Initialize the SJSSP environment.
 
         Args:
-            num_jobs: Number of jobs.
-            num_machines: Number of machines.
+            num_jobs: Number of jobs in the instance.
+            num_machines: Number of machines in the instance.
         """
         self.num_jobs = num_jobs
         self.num_machines = num_machines
-        self.num_operations = num_jobs * num_machines
+        self.num_operations = self.num_jobs * self.num_machines
 
         # Operation IDs for the first and last operation of each job
         # Job i's operations are [i*n_m, i*n_m+1, ..., i*n_m+(n_m-1)]
-        self.first_op_per_job = np.arange(0, self.num_operations, self.num_machines)
-        self.last_op_per_job = np.arange(num_machines - 1, self.num_operations, num_machines)
+        self.first_operation_per_job = np.arange(0, self.num_operations, self.num_machines)
+        self.last_operation_per_job = np.arange(self.num_machines - 1, self.num_operations, self.num_machines)
 
     def is_done(self) -> bool:
         return len(self.schedule) == self.num_operations
 
-    def step(self, action: int) -> tuple[np.ndarray, np.ndarray, float, bool, np.ndarray, np.ndarray]:
+    def step(self, action: int) -> StepResult:
+        """
+        Step the environment with the given action.
+
+        Args:
+            action: The operation ID to schedule.
+
+        Returns:
+            adj: The adjacency matrix of the constraint graph.
+            features: The features of the operations.
+            reward: The reward for the action.
+            done: Whether the environment is done.
+            omega: The next schedulable operation ID per job.
+            mask: True if job is fully scheduled.
+        """
         # Redundant action (already scheduled) has no effect
         if action not in self.schedule:
             job = action // self.num_machines
@@ -66,7 +94,7 @@ class SJSSP(gym.Env):
             self.insertion_flags.append(inserted)
 
             # Update candidate operations (omega) and completion mask
-            if action not in self.last_op_per_job:
+            if action not in self.last_operation_per_job:
                 self.omega[job] += 1
             else:
                 self.mask[job] = True
@@ -83,7 +111,7 @@ class SJSSP(gym.Env):
             )
             self.adj[action] = 0
             self.adj[action, action] = 1  # self-loop
-            if action not in self.first_op_per_job:
+            if action not in self.first_operation_per_job:
                 self.adj[action, action - 1] = 1  # conjunctive arc (job order)
             self.adj[action, predecessor] = 1  # disjunctive arc (machine order)
             self.adj[successor, action] = 1
@@ -104,12 +132,12 @@ class SJSSP(gym.Env):
             self.pos_rewards += reward
         self.max_end_time = self.lower_bounds.max()
 
-        return self.adj, features, reward, self.done(), self.omega, self.mask
+        return StepResult(self.adj, features, reward, self.is_done(), self.omega, self.mask)
 
-    def reset(self, data):
+    def reset(self, data: tuple[ProcessingTimes, MachineAssignments]) -> ResetResult:
         self.step_count = 0
-        self.machines = data[-1]
-        self.durations = data[0].astype(np.single)
+        self.machines: MachineAssignments = data[-1]
+        self.durations: ProcessingTimes = data[0].astype(np.single)
         self.remaining_durations = np.copy(self.durations)
         self.schedule = []
         self.insertion_flags = []
@@ -117,10 +145,10 @@ class SJSSP(gym.Env):
 
         # Adjacency matrix: self-loops + conjunctive (job-order) arcs
         # Each operation points to its predecessor in the same job
-        identity = np.eye(self.n_ops, dtype=np.single)
-        job_precedence = np.eye(self.n_ops, k=-1, dtype=np.single)
-        job_precedence[self.first_op_per_job] = 0  # first op has no predecessor
-        self.adj = identity + job_precedence
+        identity = np.eye(self.num_operations, dtype=np.single)
+        job_precedence = np.eye(self.num_operations, k=-1, dtype=np.single)
+        job_precedence[self.first_operation_per_job] = 0  # first op has no predecessor
+        self.adj: AdjMatrix = identity + job_precedence
 
         # Initial lower bounds = cumulative duration along each job
         self.lower_bounds = np.cumsum(self.durations, axis=1, dtype=np.single)
@@ -128,40 +156,40 @@ class SJSSP(gym.Env):
         self.max_end_time = self.initQuality
         self.finished_mark = np.zeros_like(self.machines, dtype=np.single)
 
-        features = np.concatenate((
+        features: Features = np.concatenate((
             self.lower_bounds.reshape(-1, 1) / configs.et_normalize_coef,
             self.finished_mark.reshape(-1, 1),
         ), axis=1)
 
         # Candidate operations: each job starts with its first operation
-        self.omega = self.first_op_per_job.astype(np.int64)
-        self.mask = np.full(self.n_jobs, fill_value=False)
+        self.omega: Omega = self.first_operation_per_job.astype(np.int64)
+        self.mask: Mask = np.full(self.num_jobs, fill_value=False)
 
         # Machine state tracking (transposed: n_m x n_j)
         self.machine_start_times = -configs.high * np.ones_like(
             self.durations.T, dtype=np.int32
         )
-        self.op_ids_on_machines = -self.n_jobs * np.ones_like(
+        self.op_ids_on_machines = -self.num_jobs * np.ones_like(
             self.durations.T, dtype=np.int32
         )
 
         # End times of scheduled operations (filled in during step)
         self.end_times = np.zeros_like(self.durations, dtype=np.single)
 
-        return self.adj, features, self.omega, self.mask
+        return ResetResult(self.adj, features, self.omega, self.mask)
 
     # ── Backward compatibility aliases ──────────────────────────────
     @property
     def number_of_jobs(self):
-        return self.n_jobs
+        return self.num_jobs
 
     @property
     def number_of_machines(self):
-        return self.n_machines
+        return self.num_machines
 
     @property
     def number_of_tasks(self):
-        return self.n_ops
+        return self.num_operations
 
     @property
     def posRewards(self):

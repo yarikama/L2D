@@ -41,7 +41,7 @@ while True:
     # print('ET after action:\n', env.LBs)
     # print(fea)
     # print()
-    if env.done():
+    if env.is_done():
         break
 t2 = time.time()
 makespan = sum(rewards) - env.posRewards
@@ -91,7 +91,7 @@ for m in range(n_m):
 c = 0
 adj, fea, omega, mask = env.reset(data)
 rewards = [- env.initQuality]
-while not env.done():
+while not env.is_done():
     for m in range(n_m):
         for t in range(steps_basedon_sol[m][-1], n_j):
             if steps_basedon_sol[m][t] in env.omega:
@@ -159,7 +159,7 @@ while True:
         action = omega[indices.numpy().item()]
         adj, fea, reward, done, omega, mask = env.step(action.item())
         rewards.append(reward)
-        if env.done():
+        if env.is_done():
             break
 makespan = sum(rewards) - env.posRewards
 print(makespan)

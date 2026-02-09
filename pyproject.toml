@@ -8,6 +8,7 @@ dependencies = [
     "gym==0.17.3",
     "matplotlib",
     "numpy",
+    "pydantic>=2.12.5",
     "torch",
 ]
 

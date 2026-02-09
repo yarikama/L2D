@@ -137,7 +137,7 @@ if __name__ == "__main__":
         rewards.append(reward)
         # print('ET after action:\n', env.LBs)
         print()
-        if env.done():
+        if env.is_done():
             break
     t2 = time.time()
     print(t2 - t1)

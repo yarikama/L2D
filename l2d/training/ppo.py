@@ -256,7 +256,7 @@ def main():
                 ep_rewards[i] += reward
                 memories[i].r_mb.append(reward)
                 memories[i].done_mb.append(done)
-            if envs[0].done():
+            if envs[0].is_done():
                 break
         for j in range(configs.num_envs):
             ep_rewards[j] -= envs[j].posRewards
