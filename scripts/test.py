@@ -72,7 +72,8 @@ def test(dataset):
     # torch.cuda.synchronize()
     t1 = time.time()
     for i, data in enumerate(dataset):
-        adj, fea, candidate, mask = env.reset(data)
+        reset_result = env.reset(data)
+        adj, fea, candidate, mask = reset_result.adjacency_matrix, reset_result.features, reset_result.omega, reset_result.mask
         ep_reward = - env.max_endTime
         # delta_t = []
         # t5 = time.time()
@@ -95,7 +96,8 @@ def test(dataset):
                 # action = sample_select_action(pi, omega)
                 action = greedy_select_action(pi, candidate)
 
-            adj, fea, reward, done, candidate, mask = env.step(action)
+            step_result = env.step(action)
+            adj, fea, reward, done, candidate, mask = step_result.adjacency_matrix, step_result.features, step_result.reward, step_result.done, step_result.omega, step_result.mask
             ep_reward += reward
 
             if done:

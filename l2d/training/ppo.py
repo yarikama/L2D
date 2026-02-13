@@ -206,16 +206,16 @@ def main():
         mask_envs = []
 
         for i, env in enumerate(envs):
-            adj, fea, candidate, mask = env.reset(data_generator(
+            reset_result = env.reset(data_generator(
                 num_jobs=configs.n_j,
                 num_machines=configs.n_m,
                 low_bound_processing_time=configs.low,
                 high_bound_processing_time=configs.high,
             ))
-            adj_envs.append(adj)
-            fea_envs.append(fea)
-            candidate_envs.append(candidate)
-            mask_envs.append(mask)
+            adj_envs.append(reset_result.adjacency_matrix)
+            fea_envs.append(reset_result.features)
+            candidate_envs.append(reset_result.omega)
+            mask_envs.append(reset_result.mask)
             ep_rewards[i] = - env.init_quality
         # rollout the env
         while True:
@@ -250,14 +250,14 @@ def main():
                 memories[i].mask_mb.append(mask_tensor_envs[i])
                 memories[i].a_mb.append(a_idx_envs[i])
 
-                adj, fea, reward, done, candidate, mask = envs[i].step(action_envs[i].item())
-                adj_envs.append(adj)
-                fea_envs.append(fea)
-                candidate_envs.append(candidate)
-                mask_envs.append(mask)
-                ep_rewards[i] += reward
-                memories[i].r_mb.append(reward)
-                memories[i].done_mb.append(done)
+                step_result = envs[i].step(action_envs[i].item())
+                adj_envs.append(step_result.adjacency_matrix)
+                fea_envs.append(step_result.features)
+                candidate_envs.append(step_result.omega)
+                mask_envs.append(step_result.mask)
+                ep_rewards[i] += step_result.reward
+                memories[i].r_mb.append(step_result.reward)
+                memories[i].done_mb.append(step_result.done)
             if envs[0].is_done():
                 break
         for j in range(configs.num_envs):

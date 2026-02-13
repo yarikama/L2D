@@ -259,27 +259,29 @@ if __name__ == "__main__":
         high_bound_processing_time=high,
     )
     print('Dur')
-    print(data[0])
+    print(data.times)
     print('Mach')
-    print(data[-1])
+    print(data.machines)
     print()
 
-    machine_start_times = -configs.high * np.ones_like(data[0].transpose(), dtype=np.int32)
-    op_ids_on_machines = -n_j * np.ones_like(data[0].transpose(), dtype=np.int32)
+    machine_start_times = -configs.high * np.ones_like(data.times.transpose(), dtype=np.int32)
+    op_ids_on_machines = -n_j * np.ones_like(data.times.transpose(), dtype=np.int32)
 
-    _, _, omega, mask = env.reset(data)
+    reset_result = env.reset(data)
+    omega, mask = reset_result.omega, reset_result.mask
     rewards = []
     flags = []
     while True:
         action = np.random.choice(omega[np.where(mask == 0)])
         print(action)
 
-        adj, _, reward, done, omega, mask = env.step(action)
+        step_result = env.step(action)
+        reward, omega, mask = step_result.reward, step_result.omega, step_result.mask
 
         start_time, was_inserted = permissible_left_shift(
             action=action,
-            durations=data[0].astype(np.single),
-            machines=data[-1],
+            durations=data.times.astype(np.single),
+            machines=data.machines,
             machine_start_times=machine_start_times,
             op_ids_on_machines=op_ids_on_machines,
         )

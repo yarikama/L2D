@@ -18,7 +18,8 @@ def validate(vali_set, model):
     make_spans = []
     # rollout using model
     for data in vali_set:
-        adj, fea, candidate, mask = env.reset(data)
+        reset_result = env.reset(data)
+        adj, fea, candidate, mask = reset_result.adjacency_matrix, reset_result.features, reset_result.omega, reset_result.mask
         rewards = - env.init_quality
         while True:
             fea_tensor = torch.from_numpy(np.copy(fea)).to(device)
@@ -34,7 +35,8 @@ def validate(vali_set, model):
                               mask=mask_tensor.unsqueeze(0))
             # action = sample_select_action(pi, candidate)
             action = greedy_select_action(pi, candidate)
-            adj, fea, reward, done, candidate, mask = env.step(action.item())
+            step_result = env.step(action.item())
+            adj, fea, reward, done, candidate, mask = step_result.adjacency_matrix, step_result.features, step_result.reward, step_result.done, step_result.omega, step_result.mask
             rewards += reward
             if done:
                 break

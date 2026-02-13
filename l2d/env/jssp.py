@@ -3,7 +3,7 @@ Gym environment for the Sequential Job Shop Scheduling Problem (SJSSP).
 
 State representation:
 
-- adj: (num_operations, num_operations) adjacency matrix of the constraint graph
+- adjacency_matrix: (num_operations, num_operations) adjacency matrix of the constraint graph
     - self-loops + conjunctive arcs (job order) + disjunctive arcs (machine order)
 
 - features: (num_operations, 2) per-operation features
@@ -26,9 +26,10 @@ from l2d.config import configs
 from l2d.env.end_time_lb import calc_end_time_lower_bound
 from l2d.env.get_machine_neighbors import get_machine_neighbors
 from l2d.env.left_shift import permissible_left_shift
-from l2d.types import (
-    AdjMatrix,
+from l2d.env.types import (
+    AdjacencyMatrix,
     Features,
+    JSSPInstance,
     MachineAssignments,
     Mask,
     Omega,
@@ -69,9 +70,6 @@ class SJSSP(gym.Env):
 
         Args:
             action: The operation ID to schedule.
-
-        Returns:
-            StepResult: The result of the step.
         """
         if action not in self.schedule:
             self._schedule_operation(action)
@@ -79,7 +77,7 @@ class SJSSP(gym.Env):
         features = self._build_features()
         reward = self._compute_reward()
 
-        return StepResult(self.adj, features, reward, self.is_done(), self.omega, self.mask)
+        return StepResult(adjacency_matrix=self.adjacency_matrix, features=features, reward=reward, done=self.is_done(), omega=self.omega, mask=self.mask)
 
     def _schedule_operation(self, action: int) -> None:
         """Execute a single scheduling decision and update all internal state."""
@@ -135,20 +133,20 @@ class SJSSP(gym.Env):
         )
 
         # Reset row and rebuild edges
-        self.adj[action] = 0
-        self.adj[action, action] = 1  # self-loop
+        self.adjacency_matrix[action] = 0
+        self.adjacency_matrix[action, action] = 1  # self-loop
 
         # Conjunctive arc: point to same-job predecessor
         if action not in self.first_operation_per_job:
-            self.adj[action, action - 1] = 1
+            self.adjacency_matrix[action, action - 1] = 1
 
         # Disjunctive arcs: same-machine predecessor / successor
-        self.adj[action, predecessor_op_id] = 1
-        self.adj[successor_op_id, action] = 1
+        self.adjacency_matrix[action, predecessor_op_id] = 1
+        self.adjacency_matrix[successor_op_id, action] = 1
 
         # If inserted between two existing ops, remove their direct arc
         if self._last_was_inserted and predecessor_op_id != action and successor_op_id != action:
-            self.adj[successor_op_id, predecessor_op_id] = 0
+            self.adjacency_matrix[successor_op_id, predecessor_op_id] = 0
 
     def _build_features(self) -> Features:
         """Concatenate normalized lower bounds and finished marks."""
@@ -168,7 +166,7 @@ class SJSSP(gym.Env):
 
     # ── reset and its sub-routines ───────────────────────────────────
 
-    def reset(self, data: tuple[ProcessingTimes, MachineAssignments]) -> ResetResult:
+    def reset(self, data: JSSPInstance | tuple[ProcessingTimes, MachineAssignments]) -> ResetResult:
         """Reset the environment with a new JSSP instance."""
         self._load_instance(data)
         self._init_adjacency_matrix()
@@ -177,13 +175,17 @@ class SJSSP(gym.Env):
         self._init_machine_state()
 
         features = self._build_features()
-        return ResetResult(self.adj, features, self.omega, self.mask)
+        return ResetResult(adjacency_matrix=self.adjacency_matrix, features=features, omega=self.omega, mask=self.mask)
 
-    def _load_instance(self, data: tuple[ProcessingTimes, MachineAssignments]) -> None:
+    def _load_instance(self, data: JSSPInstance | tuple[ProcessingTimes, MachineAssignments]) -> None:
         """Store instance data and reset bookkeeping."""
         self.step_count = 0
-        self.machines: MachineAssignments = data[-1]
-        self.durations: ProcessingTimes = data[0].astype(np.single)
+        if isinstance(data, JSSPInstance):
+            self.machines: MachineAssignments = data.machines
+            self.durations: ProcessingTimes = data.times.astype(np.single)
+        else:
+            self.machines: MachineAssignments = data[-1]
+            self.durations: ProcessingTimes = data[0].astype(np.single)
         self.remaining_durations = np.copy(self.durations)
         self.schedule: list[int] = []
         self.insertion_flags: list[bool] = []
@@ -195,7 +197,7 @@ class SJSSP(gym.Env):
         identity = np.eye(self.num_operations, dtype=np.single)
         job_precedence = np.eye(self.num_operations, k=-1, dtype=np.single)
         job_precedence[self.first_operation_per_job] = 0  # first op has no predecessor
-        self.adj: AdjMatrix = identity + job_precedence
+        self.adjacency_matrix: AdjacencyMatrix = identity + job_precedence
 
     def _init_lower_bounds(self) -> None:
         """Compute initial lower bounds (cumulative duration per job)."""

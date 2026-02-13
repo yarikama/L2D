@@ -25,11 +25,12 @@ mch = np.array([[3, 2, 1],
                 [2, 1, 3]])
 # data = (dur, mch)
 print('Dur')
-print(data[0])
+print(data.times)
 print('Mach')
-print(data[-1])
+print(data.machines)
 print()
-_, _, omega, mask = env.reset(data)
+reset_result = env.reset(data)
+omega, mask = reset_result.omega, reset_result.mask
 # print('Init end time')
 # print(env.lower_bounds)
 # print()
@@ -37,8 +38,9 @@ rewards = [- env.init_quality]
 while True:
     action = np.random.choice(omega[~mask])
     # print('action:', action)
-    adj, _, reward, done, omega, mask = env.step(action)
-    rewards.append(reward)
+    step_result = env.step(action)
+    omega, mask = step_result.omega, step_result.mask
+    rewards.append(step_result.reward)
     # print('ET after action:\n', env.lower_bounds)
     # print(fea)
     # print()
