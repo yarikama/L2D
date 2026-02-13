@@ -29,6 +29,7 @@ def _shuffle_rows(two_dim_array: np.ndarray) -> np.ndarray:
         axis=1,
     )
 
+
 def generate_uniform_times_and_machines_assignment(
     num_jobs: int,
     num_machines: int,
@@ -52,6 +53,7 @@ def generate_uniform_times_and_machines_assignment(
     machine_assignments_for_each_job: MachineAssignments = np.tile(np.arange(1, num_machines + 1), (num_jobs, 1))
     shuffled_machine_assignments_for_each_job: MachineAssignments = _shuffle_rows(machine_assignments_for_each_job)
     return JSSPInstance(times=processing_times, machines=shuffled_machine_assignments_for_each_job)
+
 
 def generate_uniform_machines_assignment_and_stores_to_file(
     num_jobs: int,
