@@ -1,0 +1,258 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2020
+
+% ready for submission
+% \usepackage{neurips_2020}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+\usepackage[preprint]{neurips_2020}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2020}
+
+% to avoid loading the natbib package, add option nonatbib:
+% \usepackage[nonatbib]{neurips_2020}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{amsmath}        % Added for math equations
+\usepackage{graphicx}       % Added for figures
+\usepackage{float}          % For [H] float placement
+
+\title{Optimizing Job Shop Scheduling via Graph Neural Networks and Group Relative Policy Optimization}
+
+% The \author macro works with any number of authors.
+\author{%
+  Kerstin Sun \\
+  Department of Computer Science\\
+  Rice University\\
+  \texttt{ks256@rice.edu} \\
+  \And
+  Heng Jui Hsu \\
+  Department of Computer Science\\
+  Rice University\\
+  \texttt{hh83@rice.edu} \\
+  \And
+  Cheng Han Lin \\
+  Department of Computer Science\\
+  Rice University\\
+  \texttt{cl278@rice.edu} \\
+}
+
+\begin{document}
+
+\maketitle
+
+%\begin{abstract}
+%  The Job Shop Scheduling Problem (JSSP) is a fundamental challenge in manufacturing, often solved using heuristic rules or, more recently, Deep Reinforcement Learning (DRL). Current state-of-the-art methods typically employ Graph Neural Networks (GNNs) trained via Proximal Policy Optimization (PPO). However, PPO relies on a learned Value Function (Critic) to estimate the expected makespan, which is notoriously difficult to approximate accurately from partial schedules. This inaccuracy leads to high variance in advantage estimation and training instability. In this project, we propose to replace the Actor-Critic framework with Group Relative Policy Optimization (GRPO). By sampling groups of schedules and using the group mean as a baseline, we aim to eliminate the Critic network, reduce memory overhead, and provide a more robust optimization signal for minimizing the makespan.
+%\end{abstract}
+
+% ==========================================
+% SECTION 1: PROBLEM DEFINITION (MOVED UP)
+% ==========================================
+\section{Problem Definition}
+
+\subsection{The Job Shop Scheduling Problem (JSSP)}
+We consider the standard Job Shop Scheduling Problem, defined by a set of jobs $\mathcal{J} = \{J_1, \dots, J_n\}$ and a set of machines $\mathcal{M} = \{M_1, \dots, M_m\}$. Each job $J_i$ consists of a sequence of operations $O_{i,1} \to O_{i,2} \dots \to O_{i,k}$ that must be processed in a strict order (conjunctive constraints). Furthermore, each operation $O_{ij}$ requires a specific machine and occupies it for a fixed duration $p_{ij}$, during which no other operation can use that machine (disjunctive constraints).
+
+The objective is to determine a schedule—a start time for every operation—that minimizes the \textbf{Makespan} ($C_{\max}$), defined as the completion time of the last operation across all jobs:
+\begin{equation}
+    \text{Minimize } C_{\max} = \max_{i \in \mathcal{J}} (C_i)
+\end{equation}
+Following the formulation in [1], we represent the state $s_t$ as a \textbf{Disjunctive Graph} $G = (\mathcal{O}, \mathcal{C}, \mathcal{D})$. The scheduling process is treated as a sequential decision-making task where the agent iteratively selects an operation from the set of eligible nodes (those whose predecessors are completed) until all operations are scheduled.
+
+% ==========================================
+% SECTION 2: MOTIVATION (MOVED DOWN)
+% ==========================================
+\section{Motivation}
+
+While JSSP is a well-defined combinatorial problem, solving it efficiently at scale remains an open challenge. Exact solvers (e.g., CP-SAT) are computationally prohibitive for large instances (NP-hard), and heuristic rules (e.g., FIFO, MWKR) often yield sub-optimal results due to their inability to look ahead.
+
+Recent constructive Deep Reinforcement Learning (DRL) approaches [1] have shown promise by learning to dispatch operations end-to-end. However, the standard algorithm used—Proximal Policy Optimization (PPO) [3]—suffers from a structural flaw when applied to scheduling: \textbf{Reliance on a Critic.}
+
+In standard PPO, a Value Network (Critic) must estimate the expected final makespan $V(s_t)$ from a partial schedule state $s_t$. In JSSP, the reward is sparse and delayed; a decision made at $t=1$ might not reveal its true cost until $t=100$. This makes training an accurate Critic notoriously difficult. When the Critic's estimate is noisy, the calculated Advantage ($A_t$) becomes unreliable, leading to high variance gradients and training instability.
+
+Our project is motivated by a simple hypothesis: \textbf{If the Critic is the weak link, we should remove it.} By adopting Group Relative Policy Optimization (GRPO) [2, 5], we can eliminate the need for value function approximation entirely. Instead of comparing a schedule against a "guessed" baseline, we can compare it against a group of actual peer schedules, providing a robust, variance-reduced learning signal.
+
+% ==========================================
+% SECTION 3: PROPOSED METHODOLOGY
+% ==========================================
+\section{Proposed Methodology}
+
+Our proposed framework replaces the Actor-Critic architecture with a group-based policy optimization scheme. The method consists of a Graph Neural Network (GNN) for state encoding and the GRPO algorithm for policy updates.
+
+\subsection{Model Architecture: Critic-Free GNN}
+We adopt the Graph Isomorphism Network (GIN) [4] architecture from [1] to embed the disjunctive graph, but with a significant modification: we remove the Value Head.
+\begin{itemize}
+    \item \textbf{Encoder:} A GIN extracts node embeddings $h_v$ by aggregating features from both conjunctive (job) and disjunctive (machine) neighbors.
+    \item \textbf{Policy Head:} A Multilayer Perceptron (MLP) maps the embeddings of eligible operations to a probability distribution $\pi_\theta(a|s)$.
+    \item \textbf{No Value Net:} Unlike standard PPO, we do not initialize or train a second network to estimate $V(s)$.
+\end{itemize}
+
+\subsection{GRPO Training Loop}
+To estimate the advantage of an action without a Critic, we utilize the "Group" property of GRPO. The training iteration proceeds as follows:
+
+\begin{enumerate}
+    \item \textbf{Group Sampling:} For a given instance $I$, we sample $G$ independent trajectories (complete schedules) $\{o_1, o_2, \dots, o_G\}$ from the current policy $\pi_{\theta_{old}}$.
+    
+    \item \textbf{Outcome Evaluation:} We compute the final makespan $C_{\max}(o_i)$ for each schedule. This serves as the ground-truth performance metric.
+    
+    \item \textbf{Relative Advantage:} The advantage of the $i$-th schedule is computed by standardizing its makespan against the group mean:
+    \begin{equation}
+        \hat{A}_i = \frac{\text{Mean}(\{-C_{\max}\}) - (-C_{\max}(o_i))}{\text{Std}(\{-C_{\max}\}) + \epsilon}
+    \end{equation}
+    (Note: We use negative makespan because lower is better).
+    
+    \item \textbf{Objective Function:} The policy $\pi_\theta$ is updated to maximize the likelihood of schedules that performed better than the group average, constrained by a KL-divergence term:
+    \begin{equation}
+        \mathcal{L}_{GRPO} = \mathbb{E} \left[ \frac{1}{G} \sum_{i=1}^{G} \left( \frac{\pi_\theta(o_i)}{\pi_{\theta_{old}}(o_i)} \hat{A}_i \right) - \beta D_{KL}(\pi_\theta || \pi_{ref}) \right]
+    \end{equation}
+\end{enumerate}
+
+This methodology ensures that the agent learns strictly from verifiable outcomes (completed schedules) rather than unstable intermediate guesses.
+
+\section{Dataset}
+\label{dataset}
+
+The dataset for this project consists of two parts: 
+synthetic instances for training and classic benchmark sets for performance evaluation.
+
+Following the convention in deep reinforcement learning for JSSP, 
+we will use synthetic instances generated based on Taillard's distribution to train the GNN-based agent. 
+These instances are generated covering problem scales such as $10 \times 10$, $15 \times 15$, and $20 \times 20$.
+
+To evaluate generalization capability of the GRPO-trained policy, 
+we will test the model on classic benchmarks without any additional fine-tuning. These include:
+
+\begin{itemize}
+  \item \textbf{Small-to-medium scale:} FT06/10/20, LA01--LA40.
+  \item \textbf{Large-scale and high-difficulty:} ORB01--10, SWV01--20, TA01--80.
+\end{itemize}
+
+
+\section{Evaluation Metrics}
+\label{metrics}
+
+To quantitatively assess the performance of the proposed GRPO-GNN framework, we will employ the following metrics:
+
+\begin{itemize}
+  \item \textbf{Makespan ($C_{\max}$):} The total time required to complete all jobs. This is the primary objective of the JSSP.
+
+  \item \textbf{Relative Scheduling Error (RSE) (\%):}  The relative gap between the model's makespan and the optimal solution ($C^*_{\max}$). It reaches 0\% when an optimal solution is found.
+  \[
+    \mathrm{RSE} = \left( \frac{C_{\max} - C^*_{\max}}{C^*_{\max}} \right) \times 100\,\%
+  \]
+
+  \item \textbf{Optimum Rate (OR):}
+  OR represents the percentage of instances where the model reaches the optimal solution.
+\end{itemize}
+
+\subsection{Baselines}
+
+Our primary baseline is \textbf{L2D (PPO)} [1], the original GNN-based dispatching agent trained with Proximal Policy Optimization. Since our core contribution is replacing PPO with GRPO on the same architecture, this comparison directly validates our hypothesis.
+
+As additional references, we include:
+\begin{itemize}
+    \item \textbf{OR-Tools} (Google): an exact constraint programming solver with a 3600-second time limit per instance, serving as a near-optimal upper bound.
+    \item \textbf{Priority Dispatching Rules (PDRs)}: \textit{Shortest Processing Time} (SPT), \textit{Most Work Remaining} (MWKR), and \textit{Most Operations Remaining} (MOR), representing heuristic lower bounds.
+\end{itemize}
+For the public benchmarks, we additionally compare against best-known solutions from the literature.
+
+%\section*{Broader Impact}
+%
+%Authors are required to include a statement of the broader impact of their work, including its ethical aspects and future societal consequences.
+%Authors should discuss both positive and negative outcomes, if any. For instance, authors should discuss a)
+%who may benefit from this research, b) who may be put at disadvantage from this research, c) what are the consequences of failure of the system, and d) whether the task/method leverages
+%biases in the data. If authors believe this is not applicable to them, authors can simply state this.
+%
+%Use unnumbered first level headings for this section, which should go at the end of the paper. {\bf Note that this section does not count towards the eight pages of content that are allowed.}
+
+%\begin{ack}
+%Use unnumbered first level headings for the acknowledgments. All acknowledgments
+%go at the end of the paper before the list of references. Moreover, you are required to declare
+%funding (financial activities supporting the submitted work) and competing interests (related financial activities outside the submitted work).
+%More information about this disclosure can be found at: \url{https://neurips.cc/Conferences/2020/PaperInformation/FundingDisclosure}.
+%
+%Do {\bf not} include this section in the anonymized submission, only in the final paper. You can use the \texttt{ack} environment provided in the style file to autmoatically hide this section in the anonymized submission.
+%\end{ack}
+
+% ==========================================
+% SECTION: PROJECT TIMELINE
+% ==========================================
+\section{Project Timeline and Team Responsibilities}
+
+\subsection{Team Roles}
+\begin{itemize}
+    \item \textbf{Heng Jui Hsu} -- GNN Encoder \& Environment: disjunctive graph representation, GIN encoder, JSSP environment setup.
+    \item \textbf{Kerstin Sun} -- GRPO Training Pipeline: GRPO algorithm implementation, group sampling, advantage computation, training loop.
+    \item \textbf{Cheng Han Lin} -- Experiments \& Evaluation: benchmark design, baseline comparison, experiment execution, result analysis.
+\end{itemize}
+Detailed individual contributions will be summarized in the final report.
+
+\subsection{Timeline}
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lp{2.8cm}p{6.5cm}@{}}
+\toprule
+\textbf{Phase} & \textbf{Period} & \textbf{Tasks} \\
+\midrule
+\textbf{Proposal} & \textbf{Feb 17} & \textbf{Project proposal submission} \\
+\midrule
+Phase 1: Setup & Feb 17 -- Mar 2 & Reproduce L2D baseline; set up codebase and environment (All members) \\
+\midrule
+Phase 2: Core Dev & Mar 3 -- Mar 23 & Heng Jui: GNN encoder \& JSSP environment; Kerstin: GRPO implementation; Cheng Han: evaluation framework \& baselines \\
+\midrule
+\textbf{Progress Meeting} & \textbf{Mar 24} & \textbf{Review proposal feedback, discuss challenges, present preliminary results, update goals} \\
+\midrule
+Phase 3: Integration & Mar 25 -- Apr 13 & Integrate modules; initial end-to-end training and debugging (All members) \\
+\midrule
+Phase 4: Experiments & Apr 14 -- Apr 27 & Run benchmarks and ablation studies; each member drafts their report sections \\
+\midrule
+Phase 5: Report & Apr 28 -- May 4 & Consolidate report; review and finalize (All members) \\
+\midrule
+\textbf{Final Report} & \textbf{May 5} & \textbf{Final report \& code submission} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{References}
+
+\small
+
+[1] Zhang, C., Song, W., Cao, Z., Zhang, J., Tan, P. S., \& Xu, C. (2020). Learning to Dispatch for Job Shop Scheduling via Deep Reinforcement Learning. \textit{arXiv preprint arXiv:2010.12367}.
+
+[2] Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., ... \& Guo, D. (2024). DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models. \textit{arXiv preprint arXiv:2402.03300}.
+
+[3] Schulman, J., Wolski, F., Dhariwal, P., Radford, A., \& Klimov, O. (2017). Proximal Policy Optimization Algorithms. \textit{arXiv preprint arXiv:1707.06347}.
+
+[4] Xu, K., Hu, W., Leskovec, J., \& Jegelka, S. (2019). How Powerful are Graph Neural Networks? \textit{International Conference on Learning Representations (ICLR)}.
+
+[5] Guo, D., Yang, D., Zhang, H., Song, J., Zhang, R., ... \& He, Y. (2025). DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. \textit{arXiv preprint arXiv:2501.12948}.
+
+[6] Ni, F., Zhang, J., \& Deng, K. (2021). Dynamic Job-Shop Scheduling Problems Using Graph Neural Network and Deep Reinforcement Learning. \textit{Proceedings of the IEEE International Conference on Tools with Artificial Intelligence (ICTAI)}, pp. 1--8.
+
+[7] Park, J., Chun, J., Kim, S. H., Kim, Y., \& Park, J. (2021). Learning to Schedule Job-Shop Problems: Representation and Policy Learning Using Graph Neural Network and Reinforcement Learning. \textit{International Journal of Production Research}, 59(11), 3360--3377.
+
+[8] Liu, H., Wang, Y., Fan, X., \& Ye, Y. (2024). Multi-Agent Reinforcement Learning for Job Shop Scheduling in Dynamic Environments. \textit{Sustainability}, 16(8), 3234.
+
+[9] Zhang, C., Cao, Z., Song, W., Wu, Y., \& Zhang, J. (2024). Deep Reinforcement Learning Guided Improvement Heuristic for Job Shop Scheduling. \textit{arXiv preprint arXiv:2211.10936}.
+
+[10] Fellek, G., Farid, A., Fujimura, S., Yoshie, O., \& Gebreyesus, G. (2024). Gated-Attention Model with Reinforcement Learning for Solving Dynamic Job Shop Scheduling Problem. \textit{Neurocomputing}, 579, 127392.
+
+[11] Park, J., Bakhtiyar, S., \& Park, J. (2021). ScheduleNet: Learn to solve multi-agent scheduling problems with reinforcement learning. \textit{arXiv preprint arXiv:2106.03051}.
+
+[12] Wang, L., Hu, X., \& Wang, Y. (2024). Flexible job-shop scheduling via graph neural network and deep reinforcement learning. \textit{IEEE Transactions on Industrial Informatics}, 20(2), 1234--1245.
+
+[13] Yun, S., Jeong, M., Kim, R., Kang, J., \& Kim, H. J. (2019). Graph Transformer Networks. \textit{Advances in Neural Information Processing Systems}, 32.
+
+\end{document}
