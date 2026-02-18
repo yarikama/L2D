@@ -27,8 +27,9 @@
 \usepackage{microtype}      % microtypography
 \usepackage{amsmath}        % Added for math equations
 \usepackage{graphicx}       % Added for figures
+\usepackage{float}          % For [H] float placement
 
-\title{Project Proposal: Optimizing Job Shop Scheduling via Group Relative Policy Optimization (GRPO)}
+\title{Optimizing Job Shop Scheduling via Graph Neural Networks and Group Relative Policy Optimization}
 
 % The \author macro works with any number of authors.
 \author{%
@@ -102,7 +103,7 @@ We adopt the Graph Isomorphism Network (GIN) [4] architecture from [1] to embed 
 To estimate the advantage of an action without a Critic, we utilize the "Group" property of GRPO. The training iteration proceeds as follows:
 
 \begin{enumerate}
-    \item \textbf{Group Sampling:} For a given instance $I$, we sample $G$ independent trajectories (complete schedules) $\{o_1, o_2, \dots, o_G\}$ from the current policy $\pi_{\theta_{old}}$. We propose setting $G=16$.
+    \item \textbf{Group Sampling:} For a given instance $I$, we sample $G$ independent trajectories (complete schedules) $\{o_1, o_2, \dots, o_G\}$ from the current policy $\pi_{\theta_{old}}$.
     
     \item \textbf{Outcome Evaluation:} We compute the final makespan $C_{\max}(o_i)$ for each schedule. This serves as the ground-truth performance metric.
     
@@ -119,52 +120,6 @@ To estimate the advantage of an action without a Critic, we utilize the "Group" 
 \end{enumerate}
 
 This methodology ensures that the agent learns strictly from verifiable outcomes (completed schedules) rather than unstable intermediate guesses.
-
-% ==========================================
-% SECTION: PROJECT TIMELINE
-% ==========================================
-\section{Project Timeline and Team Responsibilities}
-
-\subsection{Team Roles}
-\begin{itemize}
-    \item \textbf{Heng Jui Hsu} -- GNN Encoder \& Environment: disjunctive graph representation, GIN encoder, JSSP environment setup.
-    \item \textbf{Kerstin Sun} -- GRPO Training Pipeline: GRPO algorithm implementation, group sampling, advantage computation, training loop.
-    \item \textbf{Cheng Han Lin} -- Experiments \& Evaluation: benchmark design, baseline comparison, experiment execution, result analysis.
-\end{itemize}
-Detailed individual contributions will be summarized in the final report.
-
-\subsection{Timeline}
-\begin{table}[h]
-\centering
-\begin{tabular}{@{}lll@{}}
-\toprule
-\textbf{Phase} & \textbf{Period} & \textbf{Tasks} \\
-\midrule
-\textbf{Proposal} & \textbf{Feb 17} & \textbf{Project proposal submission} \\
-\midrule
-Phase 1: Setup & Feb 17 -- Mar 2 & Reproduce L2D baseline; set up codebase \\
- & & and environment (All members) \\
-\midrule
-Phase 2: Core Dev & Mar 3 -- Mar 23 & Heng Jui: GNN encoder \& JSSP environment \\
- & & Kerstin: GRPO algorithm implementation \\
- & & Cheng Han: evaluation framework \& baselines \\
-\midrule
-\textbf{Progress Meeting} & \textbf{Mar 24} & \textbf{Review proposal feedback, discuss challenges,} \\
- & & \textbf{present preliminary results, update goals} \\
-\midrule
-Phase 3: Integration & Mar 25 -- Apr 13 & Integrate modules; initial end-to-end training \\
- & & and debugging (All members) \\
-\midrule
-Phase 4: Experiments & Apr 14 -- Apr 27 & Run benchmarks and ablation studies; \\
- & & each member drafts their report sections \\
-\midrule
-Phase 5: Report & Apr 28 -- May 4 & Consolidate report; review and finalize \\
- & & (All members) \\
-\midrule
-\textbf{Final Report} & \textbf{May 5} & \textbf{Final report \& code submission} \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \section{Dataset}
 \label{dataset}
@@ -204,11 +159,14 @@ To quantitatively assess the performance of the proposed GRPO-GNN framework, we 
 
 \subsection{Baselines}
 
-We select three Priority Dispatching Rules (PDRs) as baselines:
-\textit{Shortest Processing Time} (SPT), \textit{Most Work Remaining} (MWKR), and \textit{Most Operations Remaining} (MOR).
-For the synthetic instances, solutions from all methods will be benchmarked against those obtained by Google OR-Tools, 
-an exact solver based on constraint programming, with a time limit of 3600 seconds per instance.
-For the public benchmarks, we will compare against the best-known solutions.
+Our primary baseline is \textbf{L2D (PPO)} [1], the original GNN-based dispatching agent trained with Proximal Policy Optimization. Since our core contribution is replacing PPO with GRPO on the same architecture, this comparison directly validates our hypothesis.
+
+As additional references, we include:
+\begin{itemize}
+    \item \textbf{OR-Tools} (Google): an exact constraint programming solver with a 3600-second time limit per instance, serving as a near-optimal upper bound.
+    \item \textbf{Priority Dispatching Rules (PDRs)}: \textit{Shortest Processing Time} (SPT), \textit{Most Work Remaining} (MWKR), and \textit{Most Operations Remaining} (MOR), representing heuristic lower bounds.
+\end{itemize}
+For the public benchmarks, we additionally compare against best-known solutions from the literature.
 
 %\section*{Broader Impact}
 %
@@ -227,6 +185,45 @@ For the public benchmarks, we will compare against the best-known solutions.
 %
 %Do {\bf not} include this section in the anonymized submission, only in the final paper. You can use the \texttt{ack} environment provided in the style file to autmoatically hide this section in the anonymized submission.
 %\end{ack}
+
+% ==========================================
+% SECTION: PROJECT TIMELINE
+% ==========================================
+\section{Project Timeline and Team Responsibilities}
+
+\subsection{Team Roles}
+\begin{itemize}
+    \item \textbf{Heng Jui Hsu} -- GNN Encoder \& Environment: disjunctive graph representation, GIN encoder, JSSP environment setup.
+    \item \textbf{Kerstin Sun} -- GRPO Training Pipeline: GRPO algorithm implementation, group sampling, advantage computation, training loop.
+    \item \textbf{Cheng Han Lin} -- Experiments \& Evaluation: benchmark design, baseline comparison, experiment execution, result analysis.
+\end{itemize}
+Detailed individual contributions will be summarized in the final report.
+
+\subsection{Timeline}
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lp{2.8cm}p{6.5cm}@{}}
+\toprule
+\textbf{Phase} & \textbf{Period} & \textbf{Tasks} \\
+\midrule
+\textbf{Proposal} & \textbf{Feb 17} & \textbf{Project proposal submission} \\
+\midrule
+Phase 1: Setup & Feb 17 -- Mar 2 & Reproduce L2D baseline; set up codebase and environment (All members) \\
+\midrule
+Phase 2: Core Dev & Mar 3 -- Mar 23 & Heng Jui: GNN encoder \& JSSP environment; Kerstin: GRPO implementation; Cheng Han: evaluation framework \& baselines \\
+\midrule
+\textbf{Progress Meeting} & \textbf{Mar 24} & \textbf{Review proposal feedback, discuss challenges, present preliminary results, update goals} \\
+\midrule
+Phase 3: Integration & Mar 25 -- Apr 13 & Integrate modules; initial end-to-end training and debugging (All members) \\
+\midrule
+Phase 4: Experiments & Apr 14 -- Apr 27 & Run benchmarks and ablation studies; each member drafts their report sections \\
+\midrule
+Phase 5: Report & Apr 28 -- May 4 & Consolidate report; review and finalize (All members) \\
+\midrule
+\textbf{Final Report} & \textbf{May 5} & \textbf{Final report \& code submission} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section*{References}
 
