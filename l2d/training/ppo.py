@@ -1,14 +1,15 @@
-from mb_agg import *
-from agent_utils import eval_actions
-from agent_utils import select_action
-from models.actor_critic import ActorCritic
-from copy import deepcopy
-import torch
 import time
-import torch.nn as nn
+from copy import deepcopy
+
 import numpy as np
-from Params import configs
-from validation import validate
+import torch
+import torch.nn as nn
+
+from l2d.config import configs
+from l2d.models.actor_critic import ActorCritic
+from l2d.training.agent_utils import eval_actions, select_action
+from l2d.training.mb_agg import aggr_obs, g_pool_cal
+from l2d.training.validation import validate
 
 device = torch.device(configs.device)
 
@@ -101,7 +102,7 @@ class PPO:
         for i in range(len(memories)):
             rewards = []
             discounted_reward = 0
-            for reward, is_terminal in zip(reversed(memories[i].r_mb), reversed(memories[i].done_mb)):
+            for reward, is_terminal in zip(reversed(memories[i].r_mb), reversed(memories[i].done_mb), strict=False):
                 if is_terminal:
                     discounted_reward = 0
                 discounted_reward = reward + (self.gamma * discounted_reward)
@@ -157,13 +158,13 @@ class PPO:
 
 def main():
 
-    from JSSP_Env import SJSSP
-    envs = [SJSSP(n_j=configs.n_j, n_m=configs.n_m) for _ in range(configs.num_envs)]
-    
-    from uniform_instance_gen import uni_instance_gen
-    data_generator = uni_instance_gen
+    from l2d.env.jssp import SJSSP
+    envs = [SJSSP(num_jobs=configs.n_j, num_machines=configs.n_m) for _ in range(configs.num_envs)]
 
-    dataLoaded = np.load('./DataGen/generatedData' + str(configs.n_j) + '_' + str(configs.n_m) + '_Seed' + str(configs.np_seed_validation) + '.npy')
+    from l2d.env.uni_instance_gen import generate_uniform_times_and_machines_assignment
+    data_generator = generate_uniform_times_and_machines_assignment
+
+    dataLoaded = np.load('./data/generated/generatedData' + str(configs.n_j) + '_' + str(configs.n_m) + '_Seed' + str(configs.np_seed_validation) + '.npy')
     vali_data = []
     for i in range(dataLoaded.shape[0]):
         vali_data.append((dataLoaded[i][0], dataLoaded[i][1]))
@@ -195,33 +196,34 @@ def main():
     # training loop
     log = []
     validation_log = []
-    optimal_gaps = []
-    optimal_gap = 1
     record = 100000
     for i_update in range(configs.max_updates):
-
-        t3 = time.time()
 
         ep_rewards = [0 for _ in range(configs.num_envs)]
         adj_envs = []
         fea_envs = []
         candidate_envs = []
         mask_envs = []
-        
+
         for i, env in enumerate(envs):
-            adj, fea, candidate, mask = env.reset(data_generator(n_j=configs.n_j, n_m=configs.n_m, low=configs.low, high=configs.high))
-            adj_envs.append(adj)
-            fea_envs.append(fea)
-            candidate_envs.append(candidate)
-            mask_envs.append(mask)
-            ep_rewards[i] = - env.initQuality
+            reset_result = env.reset(data_generator(
+                num_jobs=configs.n_j,
+                num_machines=configs.n_m,
+                low_bound_processing_time=configs.low,
+                high_bound_processing_time=configs.high,
+            ))
+            adj_envs.append(reset_result.adjacency_matrix)
+            fea_envs.append(reset_result.features)
+            candidate_envs.append(reset_result.omega)
+            mask_envs.append(reset_result.mask)
+            ep_rewards[i] = - env.init_quality
         # rollout the env
         while True:
             fea_tensor_envs = [torch.from_numpy(np.copy(fea)).to(device) for fea in fea_envs]
             adj_tensor_envs = [torch.from_numpy(np.copy(adj)).to(device).to_sparse() for adj in adj_envs]
             candidate_tensor_envs = [torch.from_numpy(np.copy(candidate)).to(device) for candidate in candidate_envs]
             mask_tensor_envs = [torch.from_numpy(np.copy(mask)).to(device) for mask in mask_envs]
-            
+
             with torch.no_grad():
                 action_envs = []
                 a_idx_envs = []
@@ -235,7 +237,7 @@ def main():
                     action, a_idx = select_action(pi, candidate_envs[i], memories[i])
                     action_envs.append(action)
                     a_idx_envs.append(a_idx)
-            
+
             adj_envs = []
             fea_envs = []
             candidate_envs = []
@@ -248,34 +250,32 @@ def main():
                 memories[i].mask_mb.append(mask_tensor_envs[i])
                 memories[i].a_mb.append(a_idx_envs[i])
 
-                adj, fea, reward, done, candidate, mask = envs[i].step(action_envs[i].item())
-                adj_envs.append(adj)
-                fea_envs.append(fea)
-                candidate_envs.append(candidate)
-                mask_envs.append(mask)
-                ep_rewards[i] += reward
-                memories[i].r_mb.append(reward)
-                memories[i].done_mb.append(done)
-            if envs[0].done():
+                step_result = envs[i].step(action_envs[i].item())
+                adj_envs.append(step_result.adjacency_matrix)
+                fea_envs.append(step_result.features)
+                candidate_envs.append(step_result.omega)
+                mask_envs.append(step_result.mask)
+                ep_rewards[i] += step_result.reward
+                memories[i].r_mb.append(step_result.reward)
+                memories[i].done_mb.append(step_result.done)
+            if envs[0].is_done():
                 break
         for j in range(configs.num_envs):
-            ep_rewards[j] -= envs[j].posRewards
+            ep_rewards[j] -= envs[j].pos_rewards
 
-        loss, v_loss = ppo.update(memories, configs.n_j*configs.n_m, configs.graph_pool_type)
+        _loss, v_loss = ppo.update(memories, configs.n_j*configs.n_m, configs.graph_pool_type)
         for memory in memories:
             memory.clear_memory()
         mean_rewards_all_env = sum(ep_rewards) / len(ep_rewards)
         log.append([i_update, mean_rewards_all_env])
         if (i_update + 1) % 100 == 0:
-            file_writing_obj = open('./' + 'log_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w')
-            file_writing_obj.write(str(log))
+            with open('./' + 'log_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w') as f:
+                f.write(str(log))
 
         # log results
-        print('Episode {}\t Last reward: {:.2f}\t Mean_Vloss: {:.8f}'.format(
-            i_update + 1, mean_rewards_all_env, v_loss))
-        
+        print(f'Episode {i_update + 1}\t Last reward: {mean_rewards_all_env:.2f}\t Mean_Vloss: {v_loss:.8f}')
+
         # validate and save use mean performance
-        t4 = time.time()
         if (i_update + 1) % 100 == 0:
             vali_result = - validate(vali_data, ppo.policy).mean()
             validation_log.append(vali_result)
@@ -284,13 +284,8 @@ def main():
                     str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high)))
                 record = vali_result
             print('The validation quality is:', vali_result)
-            file_writing_obj1 = open(
-                './' + 'vali_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w')
-            file_writing_obj1.write(str(validation_log))
-        t5 = time.time()
-
-        # print('Training:', t4 - t3)
-        # print('Validation:', t5 - t4)
+            with open('./' + 'vali_' + str(configs.n_j) + '_' + str(configs.n_m) + '_' + str(configs.low) + '_' + str(configs.high) + '.txt', 'w') as f:
+                f.write(str(validation_log))
 
 
 if __name__ == '__main__':

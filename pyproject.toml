@@ -8,5 +8,44 @@ dependencies = [
     "gym==0.17.3",
     "matplotlib",
     "numpy",
+    "pydantic>=2.12.5",
     "torch",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+l2d-train = "l2d.training.ppo:main"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific rules
+    "TC",   # type checking
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E741",   # ambiguous variable name (common in math/ML code)
+]
+
+[tool.ruff.isort]
+known-first-party = ["l2d"]
+
+[tool.ruff.format]
+quote-style = "double"

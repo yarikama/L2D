@@ -1,11 +1,14 @@
-from mb_agg import *
-from agent_utils import *
-import torch
 import argparse
-from Params import configs
 import time
-import numpy as np
 
+import numpy as np
+import torch
+
+from l2d.config import configs
+from l2d.env.jssp import SJSSP
+from l2d.training.agent_utils import greedy_select_action
+from l2d.training.mb_agg import g_pool_cal
+from l2d.training.ppo import PPO
 
 device = torch.device(configs.device)
 
@@ -28,9 +31,7 @@ N_JOBS_N = params.Nn_j
 N_MACHINES_N = params.Nn_m
 
 
-from JSSP_Env import SJSSP
-from PPO_jssp_multiInstances import PPO
-env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
+env = SJSSP(num_jobs=N_JOBS_P, num_machines=N_MACHINES_P)
 
 ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
           n_j=N_JOBS_P,
@@ -44,26 +45,25 @@ ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
           hidden_dim_actor=configs.hidden_dim_actor,
           num_mlp_layers_critic=configs.num_mlp_layers_critic,
           hidden_dim_critic=configs.hidden_dim_critic)
-path = './SavedNetwork/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N) + '_' + str(LOW) + '_' + str(HIGH))
+path = './data/checkpoints/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N) + '_' + str(LOW) + '_' + str(HIGH))
 # ppo.policy.load_state_dict(torch.load(path))
 ppo.policy.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
 # ppo.policy.eval()
 g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
-                         batch_size=torch.Size([1, env.number_of_tasks, env.number_of_tasks]),
-                         n_nodes=env.number_of_tasks,
+                         batch_size=torch.Size([1, env.num_operations, env.num_operations]),
+                         n_nodes=env.num_operations,
                          device=device)
 # 34 41 41 57 40 56 63 35 67 66 45 67 51 68 68 41 67 30 65 64
-from uniform_instance_gen import uni_instance_gen
 np.random.seed(SEED)
 
-dataLoaded = np.load('./DataGen/generatedData' + str(N_JOBS_P) + '_' + str(N_MACHINES_P) + '_Seed' + str(SEED) + '.npy')
+dataLoaded = np.load('./data/generated/generatedData' + str(N_JOBS_P) + '_' + str(N_MACHINES_P) + '_Seed' + str(SEED) + '.npy')
 dataset = []
 
 for i in range(dataLoaded.shape[0]):
 # for i in range(1):
     dataset.append((dataLoaded[i][0], dataLoaded[i][1]))
 
-# dataset = [uni_instance_gen(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
+# dataset = [generate_uniform_times_and_machines_assignment(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(N_TEST)]
 # print(dataset[0][0])
 
 
@@ -72,7 +72,8 @@ def test(dataset):
     # torch.cuda.synchronize()
     t1 = time.time()
     for i, data in enumerate(dataset):
-        adj, fea, candidate, mask = env.reset(data)
+        reset_result = env.reset(data)
+        adj, fea, candidate, mask = reset_result.adjacency_matrix, reset_result.features, reset_result.omega, reset_result.mask
         ep_reward = - env.max_endTime
         # delta_t = []
         # t5 = time.time()
@@ -95,7 +96,8 @@ def test(dataset):
                 # action = sample_select_action(pi, omega)
                 action = greedy_select_action(pi, candidate)
 
-            adj, fea, reward, done, candidate, mask = env.step(action)
+            step_result = env.step(action)
+            adj, fea, reward, done, candidate, mask = step_result.adjacency_matrix, step_result.features, step_result.reward, step_result.done, step_result.omega, step_result.mask
             ep_reward += reward
 
             if done:
@@ -103,14 +105,14 @@ def test(dataset):
         # t6 = time.time()
         # print(t6 - t5)
         # print(max(env.end_time))
-        print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.posRewards)
-        result.append(-ep_reward + env.posRewards)
+        print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.pos_rewards)
+        result.append(-ep_reward + env.pos_rewards)
         # print(sum(delta_t))
     # torch.cuda.synchronize()
     t2 = time.time()
     print(t2 - t1)
-    file_writing_obj = open('./' + 'drltime_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w')
-    file_writing_obj.write(str((t2 - t1)/len(dataset)))
+    with open('./' + 'drltime_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w') as f:
+        f.write(str((t2 - t1)/len(dataset)))
 
     # print(result)
     # print(np.array(result, dtype=np.single).mean())

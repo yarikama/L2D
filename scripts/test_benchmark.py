@@ -1,10 +1,14 @@
-from mb_agg import *
-from agent_utils import *
-import torch
-import numpy as np
 import argparse
-from Params import configs
 import time
+
+import numpy as np
+import torch
+
+from l2d.config import configs
+from l2d.env.jssp import SJSSP
+from l2d.training.agent_utils import greedy_select_action
+from l2d.training.mb_agg import g_pool_cal
+from l2d.training.ppo import PPO
 
 device = configs.device
 
@@ -24,9 +28,7 @@ N_MACHINES_N = params.Nn_m
 LOW = configs.low
 HIGH = configs.high
 
-from JSSP_Env import SJSSP
-from PPO_jssp_multiInstances import PPO
-env = SJSSP(n_j=N_JOBS_P, n_m=N_MACHINES_P)
+env = SJSSP(num_jobs=N_JOBS_P, num_machines=N_MACHINES_P)
 
 ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
           n_j=N_JOBS_P,
@@ -40,14 +42,14 @@ ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
           hidden_dim_actor=configs.hidden_dim_actor,
           num_mlp_layers_critic=configs.num_mlp_layers_critic,
           hidden_dim_critic=configs.hidden_dim_critic)
-path = './SavedNetwork/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N) + '_' + str(LOW) + '_' + str(HIGH))
+path = './data/checkpoints/{}.pth'.format(str(N_JOBS_N) + '_' + str(N_MACHINES_N) + '_' + str(LOW) + '_' + str(HIGH))
 ppo.policy.load_state_dict(torch.load(path))
 g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
-                         batch_size=torch.Size([1, env.number_of_tasks, env.number_of_tasks]),
-                         n_nodes=env.number_of_tasks,
+                         batch_size=torch.Size([1, env.num_operations, env.num_operations]),
+                         n_nodes=env.num_operations,
                          device=device)
 
-dataLoaded = np.load('./BenchDataNmpy/' + benchmark + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.npy')
+dataLoaded = np.load('./data/benchmarks/' + benchmark + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.npy')
 dataset = []
 for i in range(dataLoaded.shape[0]):
     dataset.append((dataLoaded[i][0], dataLoaded[i][1]))
@@ -55,7 +57,8 @@ for i in range(dataLoaded.shape[0]):
 result = []
 t1 = time.time()
 for i, data in enumerate(dataset):
-    adj, fea, candidate, mask = env.reset(data)
+    reset_result = env.reset(data)
+    adj, fea, candidate, mask = reset_result.adjacency_matrix, reset_result.features, reset_result.omega, reset_result.mask
     ep_reward = - env.max_endTime
     while True:
         # Running policy_old:
@@ -74,17 +77,18 @@ for i, data in enumerate(dataset):
             # action = sample_select_action(pi, omega)
             action = greedy_select_action(pi, candidate)
 
-        adj, fea, reward, done, candidate, mask = env.step(action)
+        step_result = env.step(action)
+        adj, fea, reward, done, candidate, mask = step_result.adjacency_matrix, step_result.features, step_result.reward, step_result.done, step_result.omega, step_result.mask
         ep_reward += reward
 
         if done:
             break
     # print(max(env.end_time))
-    print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.posRewards)
-    result.append(-ep_reward + env.posRewards)
+    print('Instance' + str(i + 1) + ' makespan:', -ep_reward + env.pos_rewards)
+    result.append(-ep_reward + env.pos_rewards)
 t2 = time.time()
-file_writing_obj = open('./' + 'drltime_' + benchmark + '_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w')
-file_writing_obj.write(str((t2 - t1)/len(dataset)))
+with open('./' + 'drltime_' + benchmark + '_' + str(N_JOBS_N) + 'x' + str(N_MACHINES_N) + '_' + str(N_JOBS_P) + 'x' + str(N_MACHINES_P) + '.txt', 'w') as f:
+    f.write(str((t2 - t1)/len(dataset)))
 
 # print(result)
 # print(np.array(result, dtype=np.single).mean())

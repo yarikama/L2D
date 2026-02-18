@@ -2,24 +2,25 @@ def validate(vali_set, model):
     N_JOBS = vali_set[0][0].shape[0]
     N_MACHINES = vali_set[0][0].shape[1]
 
-    from JSSP_Env import SJSSP
-    from mb_agg import g_pool_cal
-    from agent_utils import sample_select_action
-    from agent_utils import greedy_select_action
     import numpy as np
     import torch
-    from Params import configs
-    env = SJSSP(n_j=N_JOBS, n_m=N_MACHINES)
+
+    from l2d.config import configs
+    from l2d.env.jssp import SJSSP
+    from l2d.training.agent_utils import greedy_select_action
+    from l2d.training.mb_agg import g_pool_cal
+    env = SJSSP(num_jobs=N_JOBS, num_machines=N_MACHINES)
     device = torch.device(configs.device)
     g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
-                             batch_size=torch.Size([1, env.number_of_tasks, env.number_of_tasks]),
-                             n_nodes=env.number_of_tasks,
+                             batch_size=torch.Size([1, env.num_operations, env.num_operations]),
+                             n_nodes=env.num_operations,
                              device=device)
     make_spans = []
     # rollout using model
     for data in vali_set:
-        adj, fea, candidate, mask = env.reset(data)
-        rewards = - env.initQuality
+        reset_result = env.reset(data)
+        adj, fea, candidate, mask = reset_result.adjacency_matrix, reset_result.features, reset_result.omega, reset_result.mask
+        rewards = - env.init_quality
         while True:
             fea_tensor = torch.from_numpy(np.copy(fea)).to(device)
             adj_tensor = torch.from_numpy(np.copy(adj)).to(device).to_sparse()
@@ -34,22 +35,24 @@ def validate(vali_set, model):
                               mask=mask_tensor.unsqueeze(0))
             # action = sample_select_action(pi, candidate)
             action = greedy_select_action(pi, candidate)
-            adj, fea, reward, done, candidate, mask = env.step(action.item())
+            step_result = env.step(action.item())
+            adj, fea, reward, done, candidate, mask = step_result.adjacency_matrix, step_result.features, step_result.reward, step_result.done, step_result.omega, step_result.mask
             rewards += reward
             if done:
                 break
-        make_spans.append(rewards - env.posRewards)
-        # print(rewards - env.posRewards)
+        make_spans.append(rewards - env.pos_rewards)
+        # print(rewards - env.pos_rewards)
     return np.array(make_spans)
 
 
 if __name__ == '__main__':
 
-    from uniform_instance_gen import uni_instance_gen
-    import numpy as np
-    import time
     import argparse
-    from Params import configs
+
+    import numpy as np
+
+    from l2d.config import configs
+    from l2d.env.uni_instance_gen import generate_uniform_times_and_machines_assignment
 
     parser = argparse.ArgumentParser(description='Arguments for ppo_jssp')
     parser.add_argument('--Pn_j', type=int, default=20, help='Number of jobs of instances to test')
@@ -69,8 +72,9 @@ if __name__ == '__main__':
     N_JOBS_N = params.Nn_j
     N_MACHINES_N = params.Nn_m
 
-    from PPO_jssp_multiInstances import PPO
     import torch
+
+    from l2d.training.ppo import PPO
 
     ppo = PPO(configs.lr, configs.gamma, configs.k_epochs, configs.eps_clip,
               n_j=N_JOBS_P,
@@ -94,7 +98,7 @@ if __name__ == '__main__':
 
         np.random.seed(SEED)
 
-        vali_data = [uni_instance_gen(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(params.n_vali)]
+        vali_data = [generate_uniform_times_and_machines_assignment(n_j=N_JOBS_P, n_m=N_MACHINES_P, low=LOW, high=HIGH) for _ in range(params.n_vali)]
 
         makespan = - validate(vali_data, ppo.policy)
         print(makespan.mean())

@@ -1,8 +1,9 @@
-import numpy as np
-from JSSP_Env import SJSSP
-from uniform_instance_gen import uni_instance_gen
-from Params import configs
 import time
+
+import numpy as np
+
+from l2d.env.jssp import SJSSP
+from l2d.env.uni_instance_gen import generate_uniform_times_and_machines_assignment
 
 n_j = 200
 n_m = 50
@@ -10,12 +11,12 @@ low = 1
 high = 99
 SEED = 11
 np.random.seed(SEED)
-env = SJSSP(n_j=n_j, n_m=n_m)
+env = SJSSP(num_jobs=n_j, num_machines=n_m)
 
 
 # rollout env random action
 t1 = time.time()
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_times_and_machines_assignment(num_jobs=n_j, num_machines=n_m, low_bound_processing_time=low, high_bound_processing_time=high)
 dur = np.array([[83, 65,  3],
                [69, 42, 64],
                [27, 27, 18]])
@@ -24,34 +25,36 @@ mch = np.array([[3, 2, 1],
                 [2, 1, 3]])
 # data = (dur, mch)
 print('Dur')
-print(data[0])
+print(data.times)
 print('Mach')
-print(data[-1])
+print(data.machines)
 print()
-_, _, omega, mask = env.reset(data)
+reset_result = env.reset(data)
+omega, mask = reset_result.omega, reset_result.mask
 # print('Init end time')
-# print(env.LBs)
+# print(env.lower_bounds)
 # print()
-rewards = [- env.initQuality]
+rewards = [- env.init_quality]
 while True:
     action = np.random.choice(omega[~mask])
     # print('action:', action)
-    adj, _, reward, done, omega, mask = env.step(action)
-    rewards.append(reward)
-    # print('ET after action:\n', env.LBs)
+    step_result = env.step(action)
+    omega, mask = step_result.omega, step_result.mask
+    rewards.append(step_result.reward)
+    # print('ET after action:\n', env.lower_bounds)
     # print(fea)
     # print()
-    if env.done():
+    if env.is_done():
         break
 t2 = time.time()
-makespan = sum(rewards) - env.posRewards
+makespan = sum(rewards) - env.pos_rewards
 # print(makespan)
-# print(env.LBs)
+# print(env.lower_bounds)
 print(t2 - t1)
-# np.save('sol', env.opIDsOnMchs // n_m)
-# np.save('jobSequence', env.opIDsOnMchs)
+# np.save('sol', env.op_ids_on_machines // n_m)
+# np.save('jobSequence', env.op_ids_on_machines)
 # np.save('testData', data)
-# print(env.opIDsOnMchs // n_m + 1)
+# print(env.op_ids_on_machines // n_m + 1)
 # print(env.step_count)
 # print(t)
 # print(np.concatenate((fea, data[1].reshape(-1, 1)), axis=1))
@@ -61,7 +64,7 @@ print(t2 - t1)
 
 '''# rtools solution
 from ortools_baseline import MinimalJobshopSat
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_times_and_machines_assignment(num_jobs=n_j, num_machines=n_m, low_bound_processing_time=low, high_bound_processing_time=high)
 # print(data)
 times_rearrange = np.expand_dims(data[0], axis=-1)
 machines_rearrange = np.expand_dims(data[1], axis=-1)
@@ -72,7 +75,7 @@ print(result)'''
 '''# run solution to test env
 from ortools_baseline import MinimalJobshopSat
 np.random.seed(SEED)
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_times_and_machines_assignment(num_jobs=n_j, num_machines=n_m, low_bound_processing_time=low, high_bound_processing_time=high)
 times_rearrange = np.expand_dims(data[0], axis=-1)
 machines_rearrange = np.expand_dims(data[1], axis=-1)
 data2ortools = np.concatenate((machines_rearrange, times_rearrange), axis=-1)
@@ -90,8 +93,8 @@ for m in range(n_m):
 
 c = 0
 adj, fea, omega, mask = env.reset(data)
-rewards = [- env.initQuality]
-while not env.done():
+rewards = [- env.init_quality]
+while not env.is_done():
     for m in range(n_m):
         for t in range(steps_basedon_sol[m][-1], n_j):
             if steps_basedon_sol[m][t] in env.omega:
@@ -102,7 +105,7 @@ while not env.done():
             else:
                 break
 print(rewards)
-makespan = sum(rewards) - env.posRewards
+makespan = sum(rewards) - env.pos_rewards
 print(makespan)
 print(opt_val)'''
 
@@ -139,9 +142,9 @@ g_pool_step = g_pool_cal(graph_pool_type=configs.graph_pool_type,
                          n_nodes=n_j * n_m,
                          device=device)
 
-data = uni_instance_gen(n_j=n_j, n_m=n_m, low=low, high=high)
+data = generate_uniform_times_and_machines_assignment(num_jobs=n_j, num_machines=n_m, low_bound_processing_time=low, high_bound_processing_time=high)
 adj, fea, omega, mask = env.reset(data)
-rewards = [- env.initQuality]
+rewards = [- env.init_quality]
 while True:
     fea_tensor = torch.from_numpy(np.copy(fea)).to(device)
     adj_tensor = torch.from_numpy(np.copy(adj)).to(device)
@@ -159,14 +162,14 @@ while True:
         action = omega[indices.numpy().item()]
         adj, fea, reward, done, omega, mask = env.step(action.item())
         rewards.append(reward)
-        if env.done():
+        if env.is_done():
             break
-makespan = sum(rewards) - env.posRewards
+makespan = sum(rewards) - env.pos_rewards
 print(makespan)
-print(env.posRewards)
-print(env.opIDsOnMchs)'''
+print(env.pos_rewards)
+print(env.op_ids_on_machines)'''
 
 '''# Test random instances
 for _ in range(3):
-    times, machines = uni_instance_gen(n_j=configs.n_j, n_m=configs.n_m, low=configs.low, high=configs.high)
+    times, machines = generate_uniform_times_and_machines_assignment(num_jobs=configs.n_j, num_machines=configs.n_m, low_bound_processing_time=configs.low, high_bound_processing_time=configs.high)
     print(times)'''
