@@ -32,16 +32,20 @@
 
 % The \author macro works with any number of authors.
 \author{%
-  Student Name 1 \\
+  Kerstin Sun \\
   Department of Computer Science\\
-  University Name\\
-  \texttt{email1@university.edu} \\
+  Rice University\\
+  \texttt{ks256@rice.edu} \\
   \And
-  Student Name 2 \\
+  Heng Jui Hsu \\
   Department of Computer Science\\
-  University Name\\
-  \texttt{email2@university.edu} \\
-  % Add more authors as needed
+  Rice University\\
+  \texttt{hh83@rice.edu} \\
+  \And
+  Cheng Han Lin \\
+  Department of Computer Science\\
+  Rice University\\
+  \texttt{cl278@rice.edu} \\
 }
 
 \begin{document}
@@ -73,11 +77,11 @@ Following the formulation in [1], we represent the state $s_t$ as a \textbf{Disj
 
 While JSSP is a well-defined combinatorial problem, solving it efficiently at scale remains an open challenge. Exact solvers (e.g., CP-SAT) are computationally prohibitive for large instances (NP-hard), and heuristic rules (e.g., FIFO, MWKR) often yield sub-optimal results due to their inability to look ahead.
 
-Recent constructive Deep Reinforcement Learning (DRL) approaches [1] have shown promise by learning to dispatch operations end-to-end. However, the standard algorithm used—Proximal Policy Optimization (PPO)—suffers from a structural flaw when applied to scheduling: \textbf{Reliance on a Critic.}
+Recent constructive Deep Reinforcement Learning (DRL) approaches [1] have shown promise by learning to dispatch operations end-to-end. However, the standard algorithm used—Proximal Policy Optimization (PPO) [3]—suffers from a structural flaw when applied to scheduling: \textbf{Reliance on a Critic.}
 
 In standard PPO, a Value Network (Critic) must estimate the expected final makespan $V(s_t)$ from a partial schedule state $s_t$. In JSSP, the reward is sparse and delayed; a decision made at $t=1$ might not reveal its true cost until $t=100$. This makes training an accurate Critic notoriously difficult. When the Critic's estimate is noisy, the calculated Advantage ($A_t$) becomes unreliable, leading to high variance gradients and training instability.
 
-Our project is motivated by a simple hypothesis: \textbf{If the Critic is the weak link, we should remove it.} By adopting Group Relative Policy Optimization (GRPO) [2], we can eliminate the need for value function approximation entirely. Instead of comparing a schedule against a "guessed" baseline, we can compare it against a group of actual peer schedules, providing a robust, variance-reduced learning signal.
+Our project is motivated by a simple hypothesis: \textbf{If the Critic is the weak link, we should remove it.} By adopting Group Relative Policy Optimization (GRPO) [2, 5], we can eliminate the need for value function approximation entirely. Instead of comparing a schedule against a "guessed" baseline, we can compare it against a group of actual peer schedules, providing a robust, variance-reduced learning signal.
 
 % ==========================================
 % SECTION 3: PROPOSED METHODOLOGY
@@ -87,7 +91,7 @@ Our project is motivated by a simple hypothesis: \textbf{If the Critic is the we
 Our proposed framework replaces the Actor-Critic architecture with a group-based policy optimization scheme. The method consists of a Graph Neural Network (GNN) for state encoding and the GRPO algorithm for policy updates.
 
 \subsection{Model Architecture: Critic-Free GNN}
-We adopt the Graph Isomorphism Network (GIN) architecture from [1] to embed the disjunctive graph, but with a significant modification: we remove the Value Head.
+We adopt the Graph Isomorphism Network (GIN) [4] architecture from [1] to embed the disjunctive graph, but with a significant modification: we remove the Value Head.
 \begin{itemize}
     \item \textbf{Encoder:} A GIN extracts node embeddings $h_v$ by aggregating features from both conjunctive (job) and disjunctive (machine) neighbors.
     \item \textbf{Policy Head:} A Multilayer Perceptron (MLP) maps the embeddings of eligible operations to a probability distribution $\pi_\theta(a|s)$.
@@ -116,28 +120,80 @@ To estimate the advantage of an action without a Critic, we utilize the "Group" 
 
 This methodology ensures that the agent learns strictly from verifiable outcomes (completed schedules) rather than unstable intermediate guesses.
 
-\section*{Related Work}
+% ==========================================
+% SECTION: PROJECT TIMELINE
+% ==========================================
+\section{Project Timeline and Team Responsibilities}
+
+\subsection{Team Roles}
+\begin{itemize}
+    \item \textbf{Heng Jui Hsu} -- GNN Encoder \& Environment: disjunctive graph representation, GIN encoder, JSSP environment setup.
+    \item \textbf{Kerstin Sun} -- GRPO Training Pipeline: GRPO algorithm implementation, group sampling, advantage computation, training loop.
+    \item \textbf{Cheng Han Lin} -- Experiments \& Evaluation: benchmark design, baseline comparison, experiment execution, result analysis.
+\end{itemize}
+Detailed individual contributions will be summarized in the final report.
+
+\subsection{Timeline}
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Phase} & \textbf{Period} & \textbf{Tasks} \\
+\midrule
+\textbf{Proposal} & \textbf{Feb 17} & \textbf{Project proposal submission} \\
+\midrule
+Phase 1: Setup & Feb 17 -- Mar 2 & Reproduce L2D baseline; set up codebase \\
+ & & and environment (All members) \\
+\midrule
+Phase 2: Core Dev & Mar 3 -- Mar 23 & Heng Jui: GNN encoder \& JSSP environment \\
+ & & Kerstin: GRPO algorithm implementation \\
+ & & Cheng Han: evaluation framework \& baselines \\
+\midrule
+\textbf{Progress Meeting} & \textbf{Mar 24} & \textbf{Review proposal feedback, discuss challenges,} \\
+ & & \textbf{present preliminary results, update goals} \\
+\midrule
+Phase 3: Integration & Mar 25 -- Apr 13 & Integrate modules; initial end-to-end training \\
+ & & and debugging (All members) \\
+\midrule
+Phase 4: Experiments & Apr 14 -- Apr 27 & Run benchmarks and ablation studies; \\
+ & & each member drafts their report sections \\
+\midrule
+Phase 5: Report & Apr 28 -- May 4 & Consolidate report; review and finalize \\
+ & & (All members) \\
+\midrule
+\textbf{Final Report} & \textbf{May 5} & \textbf{Final report \& code submission} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{References}
 
 \small
 
 [1] Zhang, C., Song, W., Cao, Z., Zhang, J., Tan, P. S., \& Xu, C. (2020). Learning to Dispatch for Job Shop Scheduling via Deep Reinforcement Learning. \textit{arXiv preprint arXiv:2010.12367}.
 
-[2] Ni, F., Zhang, J., \& Deng, K. (2021). Dynamic Job-Shop Scheduling Problems Using Graph Neural Network and Deep Reinforcement Learning. \textit{Proceedings of the IEEE International Conference on Tools with Artificial Intelligence (ICTAI)}, pp. 1--8.
+[2] Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., ... \& Guo, D. (2024). DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models. \textit{arXiv preprint arXiv:2402.03300}.
 
-[3] Park, J., Chun, J., Kim, S. H., Kim, Y., \& Park, J. (2021). Learning to Schedule Job-Shop Problems: Representation and Policy Learning Using Graph Neural Network and Reinforcement Learning. \textit{International Journal of Production Research}, 59(11), 3360--3377.
+[3] Schulman, J., Wolski, F., Dhariwal, P., Radford, A., \& Klimov, O. (2017). Proximal Policy Optimization Algorithms. \textit{arXiv preprint arXiv:1707.06347}.
 
-[4] Liu, H., Wang, Y., Fan, X., \& Ye, Y. (2024). Multi-Agent Reinforcement Learning for Job Shop Scheduling in Dynamic Environments. \textit{Sustainability}, 16(8), 3234.
+[4] Xu, K., Hu, W., Leskovec, J., \& Jegelka, S. (2019). How Powerful are Graph Neural Networks? \textit{International Conference on Learning Representations (ICLR)}.
 
-[5] Zhang, C., Cao, Z., Song, W., Wu, Y., \& Zhang, J. (2024). Deep Reinforcement Learning Guided Improvement Heuristic for Job Shop Scheduling. \textit{arXiv preprint arXiv:2211.10936}.
+[5] Guo, D., Yang, D., Zhang, H., Song, J., Zhang, R., ... \& He, Y. (2025). DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. \textit{arXiv preprint arXiv:2501.12948}.
 
-[6] Fellek, G., Farid, A., Fujimura, S., Yoshie, O., \& Gebreyesus, G. (2024). Gated-Attention Model with Reinforcement Learning for Solving Dynamic Job Shop Scheduling Problem. \textit{Neurocomputing}, 579, 127392.
+[6] Ni, F., Zhang, J., \& Deng, K. (2021). Dynamic Job-Shop Scheduling Problems Using Graph Neural Network and Deep Reinforcement Learning. \textit{Proceedings of the IEEE International Conference on Tools with Artificial Intelligence (ICTAI)}, pp. 1--8.
 
-[7] Park, J., Bakhtiyar, S., \& Park, J. (2021). ScheduleNet: Learn to solve multi-agent scheduling problems with reinforcement learning. \textit{arXiv preprint arXiv:2106.03051}.
+[7] Park, J., Chun, J., Kim, S. H., Kim, Y., \& Park, J. (2021). Learning to Schedule Job-Shop Problems: Representation and Policy Learning Using Graph Neural Network and Reinforcement Learning. \textit{International Journal of Production Research}, 59(11), 3360--3377.
 
-[8] Wang, L., Hu, X., \& Wang, Y. (2024). Flexible job-shop scheduling via graph neural network and deep reinforcement learning. \textit{IEEE Transactions on Industrial Informatics}, 20(2), 1234--1245.
+[8] Liu, H., Wang, Y., Fan, X., \& Ye, Y. (2024). Multi-Agent Reinforcement Learning for Job Shop Scheduling in Dynamic Environments. \textit{Sustainability}, 16(8), 3234.
 
-[9] Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., ... \& Guo, D. (2024). DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models. \textit{arXiv preprint arXiv:2402.03300}.
+[9] Zhang, C., Cao, Z., Song, W., Wu, Y., \& Zhang, J. (2024). Deep Reinforcement Learning Guided Improvement Heuristic for Job Shop Scheduling. \textit{arXiv preprint arXiv:2211.10936}.
 
-[10] Yun, S., Jeong, M., Kim, R., Kang, J., \& Kim, H. J. (2019). Graph Transformer Networks. \textit{Advances in Neural Information Processing Systems}, 32.
+[10] Fellek, G., Farid, A., Fujimura, S., Yoshie, O., \& Gebreyesus, G. (2024). Gated-Attention Model with Reinforcement Learning for Solving Dynamic Job Shop Scheduling Problem. \textit{Neurocomputing}, 579, 127392.
+
+[11] Park, J., Bakhtiyar, S., \& Park, J. (2021). ScheduleNet: Learn to solve multi-agent scheduling problems with reinforcement learning. \textit{arXiv preprint arXiv:2106.03051}.
+
+[12] Wang, L., Hu, X., \& Wang, Y. (2024). Flexible job-shop scheduling via graph neural network and deep reinforcement learning. \textit{IEEE Transactions on Industrial Informatics}, 20(2), 1234--1245.
+
+[13] Yun, S., Jeong, M., Kim, R., Kang, J., \& Kim, H. J. (2019). Graph Transformer Networks. \textit{Advances in Neural Information Processing Systems}, 32.
 
 \end{document}
