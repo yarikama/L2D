@@ -367,6 +367,50 @@ line. Please give LaTeX hyphenation hints using the \verb+\-+ command when
 necessary.
 
 
+\section{Dataset}
+\label{dataset}
+
+The dataset for this project consists of two parts: 
+synthetic instances for training and classic benchmark sets for performance evaluation.
+
+Following the convention in deep reinforcement learning for JSSP, 
+we will use synthetic instances generated based on Taillard's distribution to train the GNN-based agent. 
+These instances are generated covering problem scales such as $10 \times 10$, $15 \times 15$, and $20 \times 20$.
+
+To evaluate generalization capability of the GRPO-trained policy, 
+we will test the model on classic benchmarks without any additional fine-tuning. These include:
+
+\begin{itemize}
+  \item \textbf{Small-to-medium scale:} FT06/10/20, LA01--LA40.
+  \item \textbf{Large-scale and high-difficulty:} ORB01--10, SWV01--20, TA01--80.
+\end{itemize}
+
+
+\section{Evaluation Metrics}
+\label{metrics}
+
+To quantitatively assess the performance of the proposed GRPO-GNN framework, we will employ the following metrics:
+
+\begin{itemize}
+  \item \textbf{Makespan ($C_{\max}$):} The total time required to complete all jobs. This is the primary objective of the JSSP.
+
+  \item \textbf{Relative Scheduling Error (RSE) (\%):}  The relative gap between the model's makespan and the optimal solution ($C^*_{\max}$). It reaches 0\% when an optimal solution is found.
+  \[
+    \mathrm{RSE} = \left( \frac{C_{\max} - C^*_{\max}}{C^*_{\max}} \right) \times 100\,\%
+  \]
+
+  \item \textbf{Optimum Rate (OR):}
+  OR represents the percentage of instances where the model reaches the optimal solution.
+\end{itemize}
+
+\subsection{Baselines}
+
+We select three Priority Dispatching Rules (PDRs) as baselines:
+\textit{Shortest Processing Time} (SPT), \textit{Most Work Remaining} (MWKR), and \textit{Most Operations Remaining} (MOR).
+For the synthetic instances, solutions from all methods will be benchmarked against those obtained by Google OR-Tools, 
+an exact solver based on constraint programming, with a time limit of 3600 seconds per instance.
+For the public benchmarks, we will compare against the best-known solutions.
+
 \section*{Broader Impact}
 
 Authors are required to include a statement of the broader impact of their work, including its ethical aspects and future societal consequences. 
